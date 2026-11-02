@@ -1,0 +1,30 @@
+{% extends 'admin/_shell.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Task Submissions — Admin{% endblock %}
+{% block page_title %}Pending Writing Task Submissions{% endblock %}
+{% block content %}
+{% if submissions %}
+{% for s in submissions %}
+<div class="card" style="margin-bottom:18px;">
+  <h3 style="margin:0 0 6px;">{{ s.task.title }}</h3>
+  <p style="color:var(--text-dim); margin:0 0 10px;">
+    By {{ s.user.full_name }} (@{{ s.user.username }}) &mdash; {{ s.word_count }} words &mdash;
+    submitted {{ s.submitted_at.strftime('%d %b %Y, %H:%M') }}
+  </p>
+  <p style="margin:0 0 10px;"><strong>Price:</strong> ${{ '%.2f'|format(s.task.price_usd) }} (KES {{ '%.0f'|format(s.task.price_kes()) }})</p>
+  <div style="background: var(--bg-soft); border: 1px solid var(--border); border-radius: 8px; padding: 14px; white-space: pre-line; max-height: 260px; overflow-y: auto; margin-bottom: 14px;">{{ s.content }}</div>
+  <div style="display:flex; gap:10px; align-items:flex-start; flex-wrap:wrap;">
+    <form method="POST" action="{{ url_for('approve_task_submission', submission_id=s.id) }}">
+      <button type="submit" class="btn btn-small">Approve &amp; Pay</button>
+    </form>
+    <form method="POST" action="{{ url_for('reject_task_submission', submission_id=s.id) }}" style="display:flex; gap:8px; flex-wrap:wrap; flex:1; min-width:220px;">
+      <input type="text" name="note" placeholder="Reason (optional)" style="flex:1; min-width:140px; padding:8px 10px; border-radius:8px; border:1px solid var(--border); background:var(--bg-soft); color:var(--text);">
+      <button type="submit" class="btn btn-small btn-danger">Reject</button>
+    </form>
+  </div>
+</div>
+{% endfor %}
+{% else %}
+<div class="empty-state">No submissions awaiting review.</div>
+{% endif %}
+{% endblock %}

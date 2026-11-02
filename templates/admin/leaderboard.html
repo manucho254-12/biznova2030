@@ -1,0 +1,84 @@
+{% extends 'admin/_shell.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Referral Leaderboard — Admin{% endblock %}
+{% block page_title %}{{ icon('award', 26) }} Referral Leaderboard{% endblock %}
+{% block content %}
+<p style="color:var(--text-dim);">Ranked by number of activated referrals in the period. Pay a cash bonus to reward your top performers — this credits their wallet directly.</p>
+
+<div class="admin-nav">
+  <a href="{{ url_for('admin_leaderboard', period='week') }}" class="{{ 'active' if period == 'week' }}">This Week</a>
+  <a href="{{ url_for('admin_leaderboard', period='month') }}" class="{{ 'active' if period == 'month' }}">This Month</a>
+  <a href="{{ url_for('admin_leaderboard', period='all') }}" class="{{ 'active' if period == 'all' }}">All-Time</a>
+</div>
+
+<div class="admin-chart-card" style="margin-bottom:28px;">
+  <h4>{{ icon('bar-chart', 16) }} Top Referrers — {{ period_label }}</h4>
+  {% if rows %}
+  <div class="breakdown-bars">
+    {% for r in rows %}
+    <div class="breakdown-row">
+      <div class="breakdown-label" style="width:150px;">#{{ loop.index }} {{ r.full_name }}</div>
+      <div class="breakdown-track"><div class="breakdown-fill" style="width:{{ r.percent }}%;"></div></div>
+      <div class="breakdown-value" style="width:70px;">{{ r.count }}</div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state">No referrals recorded for {{ period_label }} yet.</div>
+  {% endif %}
+</div>
+
+{% if rows %}{% if fixed_bonus %}
+<div class="earn-banner" style="display:flex; align-items:center; gap:10px;">
+  {{ icon('award', 18) }}
+  <span>The <strong>#1 referrer</strong> for {{ period_label }} earns an extra <strong>KES {{ fixed_bonus }}</strong>
+  {% if already_paid_top %} — already paid for this period.{% else %} — not yet paid.{% endif %}</span>
+</div>
+{% endif %}
+
+<h2 class="section-title">Pay a Bonus</h2>
+<div class="table-wrapper"><table>
+  <tr><th>Rank</th><th>Name</th><th>Username</th><th>Referrals</th><th>Bonus Amount (KES)</th><th></th></tr>
+  {% for r in rows %}
+  <tr>
+    <td>#{{ loop.index }}</td>
+    <td>{{ r.full_name }}</td>
+    <td>{{ r.username }}</td>
+    <td>{{ r.count }}</td>
+    <td>
+      {% if loop.index == 1 and fixed_bonus and already_paid_top %}
+        <span class="badge-done">{{ icon('check-circle', 15) }} Paid for {{ period_label }}</span>
+      {% else %}
+      <form method="POST" action="{{ url_for('admin_pay_leaderboard_bonus', user_id=r.user_id) }}" style="display:flex; gap:8px; align-items:center;">
+        <input type="number" name="amount" min="1" step="1"
+               value="{{ fixed_bonus if loop.index == 1 and fixed_bonus else '' }}"
+               placeholder="e.g. 500" required
+               style="width:110px; padding:8px 10px; border-radius:8px; border:1px solid var(--border); background:var(--bg-soft); color:var(--text);">
+        <input type="hidden" name="period_label" value="{{ period_label }}">
+        <button type="submit" class="btn btn-small">Pay Bonus</button>
+      </form>
+      {% endif %}
+    </td>
+    <td></td>
+  </tr>
+  {% endfor %}
+</table></div>
+{% endif %}
+
+<h2 class="section-title">Recent Bonus Payouts</h2>
+{% if recent_payouts %}
+<div class="table-wrapper"><table>
+  <tr><th>User</th><th>Amount</th><th>Period</th><th>Paid At</th></tr>
+  {% for p in recent_payouts %}
+  <tr>
+    <td>{{ p.user.full_name }} (@{{ p.user.username }})</td>
+    <td>KES {{ '%.0f'|format(p.amount) }}</td>
+    <td>{{ p.period_label }}</td>
+    <td>{{ p.paid_at.strftime('%d %b %Y, %H:%M') }}</td>
+  </tr>
+  {% endfor %}
+</table></div>
+{% else %}
+<div class="empty-state">No bonus payouts yet.</div>
+{% endif %}
+{% endblock %}

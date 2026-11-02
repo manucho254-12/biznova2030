@@ -1,0 +1,39 @@
+{% extends 'admin/_shell.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Advertise Requests — Admin{% endblock %}
+{% block page_title %}Advertising Requests{% endblock %}
+{% block content %}
+<p style="color:var(--text-dim);">Requests submitted via the public "Advertise with BizNova" page. Follow up by email, then update the status below.</p>
+
+{% if requests_list %}
+{% for r in requests_list %}
+<div class="card" style="margin-bottom:16px;">
+  <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px;">
+    <div>
+      <h3 style="margin:0 0 4px;">{{ r.company_name }}</h3>
+      <p style="color:var(--text-dim); margin:0;">Product: <strong>{{ r.product_name }}</strong></p>
+    </div>
+    <span class="status-pill status-{{ 'confirmed' if r.status == 'contacted' else ('rejected' if r.status == 'closed' else 'pending') }}">
+      {{ r.status|capitalize }}
+    </span>
+  </div>
+
+  <p style="margin:12px 0 4px;"><strong>Email:</strong> <a href="mailto:{{ r.contact_email }}">{{ r.contact_email }}</a></p>
+  {% if r.contact_phone %}<p style="margin:4px 0;"><strong>Phone:</strong> {{ r.contact_phone }}</p>{% endif %}
+  {% if r.message %}<p style="margin:10px 0; background:var(--bg-soft); border:1px solid var(--border); border-radius:8px; padding:12px; white-space:pre-line;">{{ r.message }}</p>{% endif %}
+  <p style="font-size:0.8rem; color:var(--text-dim); margin:6px 0 14px;">Submitted {{ r.submitted_at.strftime('%d %b %Y, %H:%M') }}</p>
+
+  <form method="POST" action="{{ url_for('update_advertise_request_status', request_id=r.id) }}" style="display:flex; gap:8px; flex-wrap:wrap;">
+    <select name="status" style="padding:8px 12px; border-radius:8px; border:1px solid var(--border); background:var(--bg-soft); color:var(--text);">
+      <option value="new" {{ 'selected' if r.status == 'new' }}>New</option>
+      <option value="contacted" {{ 'selected' if r.status == 'contacted' }}>Contacted</option>
+      <option value="closed" {{ 'selected' if r.status == 'closed' }}>Closed</option>
+    </select>
+    <button type="submit" class="btn btn-small">Update Status</button>
+  </form>
+</div>
+{% endfor %}
+{% else %}
+<div class="empty-state">No advertising requests yet.</div>
+{% endif %}
+{% endblock %}

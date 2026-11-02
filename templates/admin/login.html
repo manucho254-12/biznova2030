@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Admin Login — BizNova{% endblock %}
+{% block content %}
+<div class="form-card">
+  <div class="form-card-header">
+    <div class="icon-badge-lg solid-green" style="margin: 0 auto 14px;">{{ icon('shield-check', 26) }}</div>
+    <h2>Admin Login</h2>
+    <p class="form-card-subtitle">Protected area — username, password, and email required.</p>
+  </div>
+  <form method="POST" action="{{ url_for('admin_login') }}">
+    <div class="form-group">
+      <label>{{ icon('user', 14) }} Username</label>
+      <input type="text" name="username" required autocomplete="username">
+    </div>
+    <div class="form-group">
+      <label>{{ icon('lock', 14) }} Password</label>
+      <div class="password-input-group">
+        <input type="password" name="password" id="admin_password" required autocomplete="current-password">
+        <button type="button" class="password-toggle" onclick="togglePassword('admin_password', this)">{{ icon('eye', 16) }}</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>{{ icon('mail', 14) }} Admin Email</label>
+      <input type="email" name="email" autocomplete="off">
+    </div>
+    <button type="submit" class="btn">Log In</button>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function togglePassword(fieldId, btn) {
+  const input = document.getElementById(fieldId);
+  const showing = input.type === 'text';
+  input.type = showing ? 'password' : 'text';
+  btn.innerHTML = showing
+    ? `{{ icon("eye", 16) }}`
+    : `{{ icon("eye-off", 16) }}`;
+}
+</script>
+{% endblock %}
+

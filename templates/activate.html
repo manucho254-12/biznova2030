@@ -1,0 +1,169 @@
+{% extends 'base.html' %}
+{% block title %}Activate Account — BizNova{% endblock %}
+{% block content %}
+<div class="form-card">
+  <h2>Activate Your Account</h2>
+  <p style="color:var(--text-dim); text-align:center; margin-top:-6px;">
+    Pay a one-time activation fee of <strong style="color:var(--accent);">KES {{ fee }}</strong>.
+    Enter your number below and we'll send an M-Pesa prompt straight to your phone — your
+    account activates automatically the moment payment goes through.
+  </p>
+
+  <div id="stk-section">
+    <div class="form-group">
+      <label>M-Pesa Phone Number</label>
+      <input type="tel" id="phone" value="{{ user.phone }}" placeholder="07XXXXXXXX" required>
+    </div>
+    <button type="button" class="btn" id="pay-btn" onclick="initiateSTK()">Pay KES {{ fee }} via M-Pesa</button>
+    <div id="stk-status" style="margin-top:14px; text-align:center; color:var(--text-dim); font-size:0.9rem;"></div>
+  </div>
+
+  <div id="manual-section" style="display:none; margin-top:24px; border-top:1px solid var(--border); padding-top:20px;">
+    <p style="color:var(--text-dim); font-size:0.9rem; text-align:center;">
+      Having trouble with the automatic prompt? You can also pay manually and submit your
+      M-Pesa code for the admin to confirm.
+    </p>
+    <div class="card" style="margin: 14px 0;">
+      <p style="margin:0;"><strong>Till Number:</strong> 5502617</p>
+      <p style="margin:6px 0 0;"><strong>Amount:</strong> KES {{ fee }}</p>
+      <p style="margin:6px 0 0; color:var(--text-dim); font-size:0.85rem;">
+        This is a Till (Buy Goods) number — no account number needed, just enter the amount and pay.
+      </p>
+    </div>
+    <form method="POST" action="{{ url_for('activate_manual') }}">
+      <div class="form-group">
+        <label>Your Username</label>
+        <input type="text" name="username" value="{{ user.username }}" readonly>
+      </div>
+      <div class="form-group">
+        <label>M-Pesa Transaction Code</label>
+        <input type="text" name="mpesa_code" placeholder="e.g. QAB1CDEFGH" required maxlength="10" minlength="10" pattern="[A-Za-z0-9]{10}" autocomplete="off" style="text-transform:uppercase;">
+        <p class="field-hint">10 letters/numbers from your M-Pesa SMS. Each code can only be used once.</p>
+      </div>
+      <input type="hidden" name="phone" id="manual-phone">
+      <button type="submit" class="btn">Submit for Manual Confirmation</button>
+    </form>
+  </div>
+
+  <p style="text-align:center; margin-top:16px;">
+    <a href="#" onclick="document.getElementById('manual-section').style.display='block'; return false;"
+       style="color:var(--text-dim); font-size:0.85rem;">Prefer to pay manually instead?</a>
+  </p>
+
+  {% if pending %}
+  <div class="flash flash-success" style="margin-top:16px;">
+    You have a payment awaiting confirmation. Keep this page open — the moment it is confirmed you'll be taken to your dashboard automatically.
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('manual-phone').value = document.getElementById('phone').value;
+
+let pollTimer = null;
+
+function initiateSTK() {
+  const phone = document.getElementById('phone').value.trim();
+  const btn = document.getElementById('pay-btn');
+  const status = document.getElementById('stk-status');
+  if (!phone) { alert('Please enter your phone number.'); return; }
+
+  btn.disabled = true;
+  btn.textContent = 'Sending prompt...';
+  status.textContent = '';
+
+  const formData = new FormData();
+  formData.append('phone', phone);
+
+  fetch('{{ url_for("activate_initiate") }}', { method: 'POST', body: formData })
+    .then(r => r.json().then(data => ({ ok: r.ok, data })))
+    .then(({ ok, data }) => {
+      if (ok && data.success) {
+        status.textContent = data.message;
+        pollStatus(data.checkout_request_id);
+      } else {
+        btn.disabled = false;
+        btn.textContent = 'Pay KES {{ fee }} via M-Pesa';
+        status.textContent = data.message || 'Something went wrong.';
+        if (data.fallback) {
+          document.getElementById('manual-section').style.display = 'block';
+        }
+      }
+    })
+    .catch(() => {
+      btn.disabled = false;
+      btn.textContent = 'Pay KES {{ fee }} via M-Pesa';
+      status.textContent = 'Network error — please try again.';
+    });
+}
+
+function pollStatus(checkoutRequestId) {
+  if (pollTimer) clearInterval(pollTimer);
+  const status = document.getElementById('stk-status');
+  const btn = document.getElementById('pay-btn');
+  btn.disabled = true;
+  let attempts = 0;
+  pollTimer = setInterval(() => {
+    attempts += 1;
+    fetch(`/activate/status/${checkoutRequestId}`, { credentials: 'same-origin' })
+      .then(r => r.json())
+      .then(data => {
+        if (data.status === 'confirmed' || data.active) {
+          clearInterval(pollTimer);
+          status.textContent = 'Payment confirmed! Taking you to your dashboard...';
+          setTimeout(() => { window.location.href = data.redirect || '{{ url_for("dashboard") }}'; }, 800);
+        } else if (data.status === 'failed') {
+          clearInterval(pollTimer);
+          status.textContent = 'Payment failed or was cancelled' + (data.result_desc ? ': ' + data.result_desc : '') + ' — please try again.';
+          btn.disabled = false;
+          btn.textContent = 'Pay KES {{ fee }} via M-Pesa';
+        } else if (attempts > 60) { // ~3 minutes
+          clearInterval(pollTimer);
+          status.textContent = 'Still waiting on confirmation. If you completed the payment, keep this page open — we will take you to your dashboard automatically as soon as it is confirmed.';
+          btn.disabled = false;
+          btn.textContent = 'Pay KES {{ fee }} via M-Pesa';
+        }
+      })
+      .catch(() => { /* temporary network blip — keep polling */ });
+  }, 3000);
+}
+
+{% if resumable %}
+// The user reloaded the page while an STK push was still pending — pick the wait back up.
+document.getElementById('stk-status').textContent = 'Waiting for your M-Pesa payment to confirm...';
+pollStatus('{{ resumable.checkout_request_id }}');
+{% endif %}
+
+// Always watch for activation while this page is open, so the user is taken to the dashboard
+// automatically however the payment is confirmed (STK callback, a late confirmation after the
+// 3-minute wait, or the admin confirming a manual M-Pesa code) — no refresh needed.
+(function () {
+  var redirecting = false, ticks = 0;
+  function go(target) {
+    if (redirecting) return;
+    redirecting = true;
+    if (pollTimer) clearInterval(pollTimer);
+    var status = document.getElementById('stk-status');
+    if (status) status.textContent = 'Payment confirmed! Taking you to your dashboard...';
+    setTimeout(function () { window.location.href = target || '{{ url_for("dashboard") }}'; }, 600);
+  }
+  function check() {
+    if (redirecting) return;
+    fetch('{{ url_for("activate_check") }}', { credentials: 'same-origin', cache: 'no-store' })
+      .then(function (r) { return r.json(); })
+      .then(function (d) { if (d && d.active) go(d.redirect); })
+      .catch(function () { /* temporary network blip — try again on the next tick */ });
+  }
+  function tick() {
+    ticks += 1;
+    // every 5s for the first 10 minutes, then every 15s
+    if (ticks <= 120 || ticks % 3 === 0) check();
+  }
+  setInterval(tick, 5000);
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) check(); });
+  window.addEventListener('pageshow', check);
+})();
+</script>
+{% endblock %}

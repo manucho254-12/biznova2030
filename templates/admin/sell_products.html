@@ -1,0 +1,78 @@
+{% extends 'admin/_shell.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Manage Sell Products — Admin{% endblock %}
+{% block page_title %}{{ icon('tag', 26) }} Sell Products{% endblock %}
+{% block content %}
+<div class="form-card" style="max-width:520px;">
+  <h2>Add Listing</h2>
+  <p style="text-align:center; color:var(--text-dim); font-size:0.85rem; margin-top:-10px;">
+    Every field below is optional — post whatever details you have and fill in the rest later.
+  </p>
+  <form method="POST" action="{{ url_for('admin_sell_products') }}" enctype="multipart/form-data">
+    <div class="form-group">
+      <label>Product Name</label>
+      <input type="text" name="name">
+    </div>
+    <div class="form-group">
+      <label>Image — upload from your device</label>
+      <input type="file" name="image" accept="image/*">
+    </div>
+    <div class="form-group">
+      <label>Cost (KES)</label>
+      <input type="number" name="cost" step="1" min="0">
+    </div>
+    <div class="form-group">
+      <label>Description</label>
+      <textarea name="description" rows="3"></textarea>
+    </div>
+    <div class="form-group">
+      <label>Owner Name</label>
+      <input type="text" name="owner_name">
+    </div>
+    <div class="form-group">
+      <label>Owner Contact (phone or email)</label>
+      <input type="text" name="owner_contact">
+    </div>
+    <div class="form-group">
+      <label>Location</label>
+      <input type="text" name="location">
+    </div>
+    <button type="submit" class="btn">Add Listing</button>
+  </form>
+</div>
+
+<h2 class="section-title">All Listings</h2>
+{% if listings %}
+<div class="grid-3">
+  {% for item in listings %}
+  <div class="tile">
+    {% if item.image_filename %}
+      <img src="{{ url_for('static', filename='uploads/sell_products/' + item.image_filename) }}" alt="">
+    {% endif %}
+    <div class="tile-body">
+      <h3 style="margin:0 0 6px;">{{ item.name or 'Untitled Listing' }}</h3>
+      {% if item.cost %}<p style="margin:0 0 6px; color:var(--accent); font-weight:700;">KES {{ '%.0f'|format(item.cost) }}</p>{% endif %}
+      {% if item.description %}<p>{{ item.description }}</p>{% endif %}
+      {% if item.location %}<p style="font-size:0.8rem;">{{ icon('map-pin', 13) }} {{ item.location }}</p>{% endif %}
+      {% if item.owner_name or item.owner_contact %}
+        <p style="font-size:0.8rem;">{{ icon('phone', 13) }} {{ item.owner_name or '—' }}{% if item.owner_contact %} &middot; {{ item.owner_contact }}{% endif %}</p>
+      {% endif %}
+      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
+        <form method="POST" action="{{ url_for('toggle_sell_product', listing_id=item.id) }}">
+          <button type="submit" class="btn btn-small {{ '' if item.active else 'btn-danger' }}">
+            {{ 'Active' if item.active else 'Inactive' }} — Toggle
+          </button>
+        </form>
+        <form method="POST" action="{{ url_for('delete_sell_product', listing_id=item.id) }}"
+              onsubmit="return confirm('Delete this listing permanently?');">
+          <button type="submit" class="btn btn-small btn-danger">Delete</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">No listings yet.</div>
+{% endif %}
+{% endblock %}

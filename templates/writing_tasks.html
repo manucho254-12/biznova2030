@@ -1,0 +1,184 @@
+{% extends 'app_base.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Writing Tasks — BizNova{% endblock %}
+{% block content %}
+<h1 style="display:flex; align-items:center; gap:10px;">{{ icon('edit', 26) }} Writing Tasks</h1>
+<p style="color:var(--text-dim);">Pay a small KES {{ unlock_fee }} unlock fee to claim an open task — whoever's payment confirms first gets it assigned to them instantly, no waiting on admin approval. If someone else grabs it a moment before you, your fee is refunded straight to your wallet automatically.</p>
+
+<h2 class="section-title" style="margin-top:8px;">Open to Claim</h2>
+{% if open_tasks %}
+  {% for t in open_tasks %}
+  <div class="task-card">
+    <h3 style="margin:0 0 8px;">{{ t.title }}</h3>
+    <p style="color:var(--text-dim); margin:0 0 10px;">{{ t.instructions[:220] }}{% if t.instructions|length > 220 %}...{% endif %}</p>
+    <div class="task-meta">
+      <span class="task-meta-item">{{ icon('banknote', 14) }} ${{ '%.2f'|format(t.price_usd) }} (&asymp; KES {{ '%.0f'|format(t.price_usd * usd_rate) }}) on approval</span>
+      <span class="task-meta-item">{{ icon('edit', 14) }} Min {{ t.min_words }} words</span>
+      <span class="task-meta-item">{{ icon('clock', 14) }} {{ t.duration_minutes }} min to complete once claimed</span>
+    </div>
+    {% if t.id in pending_unlocks %}
+      <span class="badge-done">{{ icon('clock', 15) }} Payment pending &mdash; checking for confirmation...</span>
+    {% else %}
+      <button type="button" class="btn btn-small" onclick="openUnlockModal({{ t.id }}, '{{ t.title|e }}')">Pay KES {{ unlock_fee }} &amp; Get This Task</button>
+    {% endif %}
+  </div>
+  {% endfor %}
+{% else %}
+<div class="empty-state">No writing tasks open to claim right now. Check back soon!</div>
+{% endif %}
+
+<h2 class="section-title">My Tasks</h2>
+{% if my_tasks %}
+  {% for t in my_tasks %}
+  <div class="task-card">
+    <h3 style="margin:0 0 8px;">{{ t.title }}</h3>
+    <p style="color:var(--text-dim); white-space:pre-line; margin:0 0 10px;">{{ t.instructions }}</p>
+    <div class="task-meta">
+      <span class="task-meta-item">{{ icon('banknote', 14) }} ${{ '%.2f'|format(t.price_usd) }} (&asymp; KES {{ '%.0f'|format(t.price_usd * usd_rate) }})</span>
+      <span class="task-meta-item">{{ icon('edit', 14) }} Min {{ t.min_words }} words</span>
+      {% if t.deadline_at %}
+      <span class="task-meta-item deadline-tag">{{ icon('clock', 14) }} Deadline: {{ t.deadline_at.strftime('%d %b, %H:%M') }} UTC</span>
+      {% endif %}
+    </div>
+
+    {% if t.id in my_submissions %}
+      {% set sub = my_submissions[t.id] %}
+      {% if sub.status == 'approved' %}
+        <span class="badge-done">{{ icon('check-circle', 15) }} Approved &mdash; KES {{ '%.0f'|format(t.price_usd * usd_rate) }} credited!</span>
+      {% elif sub.status == 'rejected' %}
+        <span class="badge-done" style="background: rgba(248,113,113,0.15); color: var(--danger);">{{ icon('x-circle', 15) }} Rejected{% if sub.admin_note %}: {{ sub.admin_note }}{% endif %}</span>
+      {% else %}
+        <span class="badge-done">{{ icon('check-circle', 15) }} Submitted ({{ sub.word_count }} words) &mdash; awaiting review</span>
+      {% endif %}
+    {% elif t.is_past_deadline() %}
+      <span class="badge-done" style="background: rgba(248,113,113,0.15); color: var(--danger);">{{ icon('x-circle', 15) }} Deadline passed &mdash; no submission received</span>
+    {% else %}
+      <form method="POST" action="{{ url_for('submit_writing_task', task_id=t.id) }}" onsubmit="return checkWordCount(this)">
+        <div class="form-group">
+          <label>Your Submission</label>
+          <textarea name="content" id="content-{{ t.id }}" rows="8" required oninput="updateWordCount(this, {{ t.min_words }})"></textarea>
+          <div class="word-counter" id="counter-{{ t.id }}">0 / {{ t.min_words }} words</div>
+        </div>
+        <button type="submit" class="btn btn-small">Submit for Review</button>
+      </form>
+    {% endif %}
+  </div>
+  {% endfor %}
+{% else %}
+<div class="empty-state">You have no assigned tasks yet. Claim an open task above to get started.</div>
+{% endif %}
+
+<div class="modal-overlay" id="unlock-modal" style="display:none;">
+  <div class="modal-box">
+    <h3 style="margin:0 0 6px;" id="unlock-task-title">Claim Task</h3>
+    <p style="color:var(--text-dim); font-size:0.9rem; margin:0 0 16px;">
+      Enter your M-Pesa number — we'll send a prompt for KES {{ unlock_fee }}. The task is yours the moment payment confirms.
+    </p>
+    <div class="form-group">
+      <label>M-Pesa Phone Number</label>
+      <input type="tel" id="unlock-phone" placeholder="07XXXXXXXX" value="{{ current_user_obj.phone if current_user_obj else '' }}">
+    </div>
+    <button type="button" class="btn" id="unlock-pay-btn" onclick="payForUnlock()">Pay KES {{ unlock_fee }} via M-Pesa</button>
+    <button type="button" class="btn-outline" style="width:100%; margin-top:8px;" onclick="closeUnlockModal()">Cancel</button>
+    <div id="unlock-status" style="margin-top:14px; text-align:center; color:var(--text-dim); font-size:0.9rem;"></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function updateWordCount(textarea, minWords) {
+  const words = textarea.value.trim().split(/\s+/).filter(Boolean).length;
+  const counter = document.getElementById('counter-' + textarea.id.split('-')[1]);
+  counter.textContent = words + ' / ' + minWords + ' words';
+  counter.classList.toggle('ok', words >= minWords);
+}
+function checkWordCount(form) {
+  const textarea = form.querySelector('textarea');
+  const minWords = parseInt(form.querySelector('.word-counter').textContent.split('/')[1]);
+  const words = textarea.value.trim().split(/\s+/).filter(Boolean).length;
+  if (words < minWords) {
+    alert(`Your submission has ${words} words — minimum required is ${minWords}.`);
+    return false;
+  }
+  return true;
+}
+
+let currentUnlockTaskId = null;
+let unlockPollTimer = null;
+
+function openUnlockModal(taskId, taskTitle) {
+  currentUnlockTaskId = taskId;
+  document.getElementById('unlock-task-title').textContent = 'Claim: ' + taskTitle;
+  document.getElementById('unlock-status').textContent = '';
+  document.getElementById('unlock-pay-btn').disabled = false;
+  document.getElementById('unlock-pay-btn').textContent = 'Pay KES {{ unlock_fee }} via M-Pesa';
+  document.getElementById('unlock-modal').style.display = 'flex';
+}
+
+function closeUnlockModal() {
+  if (unlockPollTimer) clearInterval(unlockPollTimer);
+  document.getElementById('unlock-modal').style.display = 'none';
+}
+
+function payForUnlock() {
+  const phone = document.getElementById('unlock-phone').value.trim();
+  const btn = document.getElementById('unlock-pay-btn');
+  const status = document.getElementById('unlock-status');
+  if (!phone) { alert('Please enter your phone number.'); return; }
+
+  btn.disabled = true;
+  btn.textContent = 'Sending prompt...';
+  status.textContent = '';
+
+  const formData = new FormData();
+  formData.append('phone', phone);
+
+  fetch(`/writing-tasks/${currentUnlockTaskId}/unlock/initiate`, { method: 'POST', body: formData })
+    .then(r => r.json().then(data => ({ ok: r.ok, data })))
+    .then(({ ok, data }) => {
+      if (ok && data.success) {
+        status.textContent = data.message;
+        pollUnlockStatus(data.checkout_request_id);
+      } else {
+        btn.disabled = false;
+        btn.textContent = 'Pay KES {{ unlock_fee }} via M-Pesa';
+        status.textContent = data.message || 'Something went wrong.';
+      }
+    })
+    .catch(() => {
+      btn.disabled = false;
+      btn.textContent = 'Pay KES {{ unlock_fee }} via M-Pesa';
+      status.textContent = 'Network error — please try again.';
+    });
+}
+
+function pollUnlockStatus(checkoutRequestId) {
+  let attempts = 0;
+  unlockPollTimer = setInterval(() => {
+    attempts += 1;
+    fetch(`/writing-tasks/unlock/status/${checkoutRequestId}`)
+      .then(r => r.json())
+      .then(data => {
+        const status = document.getElementById('unlock-status');
+        if (data.status === 'confirmed') {
+          clearInterval(unlockPollTimer);
+          status.textContent = 'Task claimed! Reloading...';
+          setTimeout(() => { window.location.reload(); }, 1200);
+        } else if (data.status === 'superseded') {
+          clearInterval(unlockPollTimer);
+          status.textContent = 'Someone else claimed this task just before you — your KES {{ unlock_fee }} was refunded to your wallet.';
+        } else if (data.status === 'failed') {
+          clearInterval(unlockPollTimer);
+          status.textContent = 'Payment failed or was cancelled: ' + (data.result_desc || '') + ' — please try again.';
+          document.getElementById('unlock-pay-btn').disabled = false;
+          document.getElementById('unlock-pay-btn').textContent = 'Pay KES {{ unlock_fee }} via M-Pesa';
+        } else if (attempts > 30) { // ~90 seconds
+          clearInterval(unlockPollTimer);
+          status.textContent = 'Still waiting on confirmation. If you completed the payment, the task will be claimed shortly — you can also refresh this page.';
+        }
+      });
+  }, 3000);
+}
+</script>
+{% endblock %}

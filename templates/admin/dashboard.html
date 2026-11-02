@@ -1,0 +1,319 @@
+{% extends 'admin/_shell.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Admin Dashboard — BizNova{% endblock %}
+{% block page_title %}{{ icon('grid', 22) }} Overview{% endblock %}
+{% block page_subtitle %}Real-time snapshot of your BizNova platform{% endblock %}
+
+{% block content %}
+
+<!-- KPI cards -->
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-card-top">
+      <div class="icon-badge blue">{{ icon('users', 18) }}</div>
+      <div class="kpi-card-label">Total Users</div>
+    </div>
+    <div class="kpi-card-value">{{ total_users }}</div>
+    <canvas id="kpiUsersSpark"></canvas>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-card-top">
+      <div class="icon-badge green">{{ icon('user-check', 18) }}</div>
+      <div class="kpi-card-label">Active (Paid)</div>
+    </div>
+    <div class="kpi-card-value">{{ active_users }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-card-top">
+      <div class="icon-badge amber">{{ icon('banknote', 18) }}</div>
+      <div class="kpi-card-label">Pending Payments</div>
+    </div>
+    <div class="kpi-card-value">{{ pending_payments }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-card-top">
+      <div class="icon-badge pink">{{ icon('wallet', 18) }}</div>
+      <div class="kpi-card-label">Pending Withdrawals</div>
+    </div>
+    <div class="kpi-card-value">{{ pending_withdrawals }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-card-top">
+      <div class="icon-badge {{ 'green' if net_position >= 0 else 'pink' }}">{{ icon('bar-chart', 18) }}</div>
+      <div class="kpi-card-label">Net Position</div>
+    </div>
+    <div class="kpi-card-value" style="color:{{ '#4ade80' if net_position >= 0 else '#f87171' }};">KES {{ '%.0f'|format(net_position) }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-card-top">
+      <div class="icon-badge green">{{ icon('trending-up', 18) }}</div>
+      <div class="kpi-card-label">Fees Collected</div>
+    </div>
+    <div class="kpi-card-value">KES {{ '%.0f'|format(total_fees_collected) }}</div>
+    <canvas id="kpiFeesSpark"></canvas>
+  </div>
+</div>
+
+<!-- Main chart + payout breakdown -->
+<div class="admin-grid-2">
+  <div class="admin-panel">
+    <div class="admin-panel-head">
+      <h3>{{ icon('bar-chart', 18) }} Signups &amp; Fees (last 14 days)</h3>
+    </div>
+    {% if (signups_by_day | sum) == 0 and (fees_by_day | sum) == 0 %}
+    <p style="color:var(--text-dim); font-size:0.85rem; margin:0 0 12px;">
+      No signups or activation fees recorded in the last 14 days yet — the chart below will fill in once that starts happening.
+    </p>
+    {% endif %}
+    <div style="position:relative; height:280px;">
+      <canvas id="signupsAreaChart"></canvas>
+    </div>
+  </div>
+  <div class="admin-panel">
+    <div class="admin-panel-head">
+      <h3>{{ icon('bar-chart', 18) }} Payout Breakdown</h3>
+    </div>
+    <div style="position:relative; height:220px;">
+      <canvas id="payoutPieChart"></canvas>
+    </div>
+    <p style="text-align:center; color:var(--text-dim); font-size:0.82rem; margin:10px 0 14px;">
+      Total Paid Out: <strong style="color:var(--text);">KES {{ '%.0f'|format(total_paid_out) }}</strong>
+    </p>
+    {% for row in payout_breakdown %}
+    <div class="legend-row">
+      <span class="dot" style="background:{{ row.color }};"></span>
+      <span class="legend-name">{{ row.label }}</span>
+      <span class="legend-value">KES {{ '%.0f'|format(row.amount) }}</span>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Recent activity, system health, alerts -->
+<div class="admin-grid-3">
+  <div class="admin-panel">
+    <div class="admin-panel-head">
+      <h3>{{ icon('inbox', 18) }} Recent Activity</h3>
+      <a href="{{ url_for('admin_payments') }}">View Payments &rarr;</a>
+    </div>
+    <div class="admin-table-wrap">
+      <table class="admin-table">
+        <thead>
+          <tr><th>Time</th><th>Type</th><th>User</th><th>Amount</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          {% for row in recent_activity %}
+          <tr>
+            <td>{{ row.time.strftime('%d %b %H:%M') }}</td>
+            <td>{{ row.type }}</td>
+            <td>{{ row.user }}</td>
+            <td>KES {{ '%.0f'|format(row.amount) }}</td>
+            <td><span class="admin-status-pill {{ row.status }}">{{ row.status|capitalize }}</span></td>
+          </tr>
+          {% else %}
+          <tr><td colspan="5" style="color:var(--text-dim);">No activity yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="admin-panel">
+    <div class="admin-panel-head">
+      <h3>{{ icon('activity', 18) }} System Health</h3>
+    </div>
+    {% for h in system_health %}
+    <div class="health-row">
+      <div class="icon-badge {{ 'green' if h.ok else 'amber' }}">{{ icon('activity', 15) }}</div>
+      <div class="health-name">{{ h.name }}</div>
+      <div class="health-status {{ 'ok' if h.ok else 'warn' }}"><span class="dot"></span> {{ h.detail }}</div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="admin-panel">
+    <div class="admin-panel-head">
+      <h3>{{ icon('alert-triangle', 18) }} Alerts</h3>
+    </div>
+    {% for a in alerts %}
+    <div class="alert-row">
+      <div class="icon-badge {{ a.color }}">{{ icon(a.icon, 15) }}</div>
+      <div class="alert-row-body">
+        <div class="alert-row-title">{{ a.title }}</div>
+        <div class="alert-row-sub">{{ a.detail }}</div>
+      </div>
+    </div>
+    {% else %}
+    <p style="color:var(--text-dim); font-size:0.85rem;">Nothing needs your attention right now.</p>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="admin-panel">
+  <h3 style="margin-top:0; display:flex; align-items:center; gap:8px;">{{ icon('settings', 18) }} Current Settings</h3>
+  <p style="margin:4px 0;">Activation Fee: <strong>KES {{ activation_fee }}</strong></p>
+  <p style="margin:4px 0;">Referral Bonus: <strong>KES {{ referral_bonus }}</strong></p>
+  <p style="margin:4px 0;">USD &rarr; KES Rate (for writing task payouts): <strong>{{ usd_rate }}</strong></p>
+  <p style="margin:12px 0 0; color:var(--text-dim); font-size:0.85rem;">To change these amounts, edit the ACTIVATION_FEE, REFERRAL_BONUS, and USD_TO_KES_RATE values near the top of app.py.</p>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"
+        onerror="this.dataset.failed='1'; var s=document.createElement('script'); s.src='https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js'; s.onload=window.__initAdminCharts; s.onerror=function(){window.__adminChartsLoadFailed=true; window.__initAdminCharts && window.__initAdminCharts();}; document.head.appendChild(s);"
+        onload="window.__initAdminCharts && window.__initAdminCharts();"></script>
+<script>
+(function () {
+  const chartData = {{ charts_json | tojson }};
+  const gridColor = 'rgba(148, 163, 184, 0.12)';
+  const tickColor = '#94a1b8';
+
+  function showError(canvasId, msg) {
+    const el = document.getElementById(canvasId);
+    if (!el || !el.parentNode) return;
+    const div = document.createElement('div');
+    div.style.cssText = 'color:var(--danger-text); font-size:0.82rem; text-align:center; padding:20px;';
+    div.textContent = msg;
+    el.parentNode.replaceChild(div, el);
+  }
+
+  function sparkline(canvasId, data, color) {
+    try {
+      new Chart(document.getElementById(canvasId), {
+        type: 'line',
+        data: {
+          labels: data.map((_, i) => i),
+          datasets: [{
+            data: data,
+            borderColor: color,
+            backgroundColor: color + '22',
+            fill: true,
+            tension: 0.4,
+            pointRadius: 0,
+            borderWidth: 2,
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false }, tooltip: { enabled: false } },
+          scales: { x: { display: false }, y: { display: false } },
+          elements: { line: { borderJoinStyle: 'round' } },
+        },
+      });
+    } catch (e) {
+      console.error('BizNova chart error (' + canvasId + '):', e);
+      showError(canvasId, 'Chart failed to load.');
+    }
+  }
+
+  function initCharts() {
+    if (typeof Chart === 'undefined') {
+      // Both the primary and fallback CDN failed to load — most likely no
+      // internet access, or a firewall/ad-blocker blocking script CDNs.
+      ['kpiUsersSpark', 'kpiFeesSpark', 'signupsAreaChart', 'payoutPieChart'].forEach((id) =>
+        showError(id, 'Could not load the charting library (no internet access, or it is blocked by your network/browser).')
+      );
+      return;
+    }
+
+    Chart.defaults.color = tickColor;
+    Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
+
+    // Running totals so the "Total Users" sparkline shows real growth, not just
+    // that day's new signups.
+    let running = 0;
+    const cumulativeUsers = chartData.signups.map(v => (running += v));
+    sparkline('kpiUsersSpark', cumulativeUsers, '#60a5fa');
+    sparkline('kpiFeesSpark', chartData.fees, '#22c55e');
+
+    try {
+      new Chart(document.getElementById('signupsAreaChart'), {
+        type: 'line',
+        data: {
+          labels: chartData.labels,
+          datasets: [
+            {
+              label: 'New signups',
+              data: chartData.signups,
+              borderColor: '#60a5fa',
+              backgroundColor: 'rgba(96,165,250,0.15)',
+              fill: true,
+              tension: 0.35,
+              pointRadius: 2,
+              yAxisID: 'y',
+            },
+            {
+              label: 'Fees (KES)',
+              data: chartData.fees,
+              borderColor: '#22c55e',
+              backgroundColor: 'rgba(34,197,94,0.08)',
+              fill: true,
+              tension: 0.35,
+              pointRadius: 2,
+              yAxisID: 'y1',
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: { legend: { position: 'bottom', labels: { color: tickColor, boxWidth: 12 } } },
+          scales: {
+            x: { grid: { display: false }, ticks: { color: tickColor } },
+            y: { position: 'left', beginAtZero: true, ticks: { precision: 0, color: tickColor }, grid: { color: gridColor }, title: { display: true, text: 'Signups', color: tickColor } },
+            y1: { position: 'right', beginAtZero: true, ticks: { color: tickColor }, grid: { display: false }, title: { display: true, text: 'Fees (KES)', color: tickColor } },
+          },
+        },
+      });
+    } catch (e) {
+      console.error('BizNova chart error (signupsAreaChart):', e);
+      showError('signupsAreaChart', 'Chart failed to load: ' + e.message);
+    }
+
+    try {
+      new Chart(document.getElementById('payoutPieChart'), {
+        type: 'doughnut',
+        data: {
+          labels: chartData.breakdown_labels,
+          datasets: [{
+            data: chartData.breakdown_values,
+            backgroundColor: chartData.breakdown_colors,
+            borderColor: '#1c2436',
+            borderWidth: 2,
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => {
+                  const total = ctx.dataset.data.reduce((a, b) => a + b, 0) || 1;
+                  const pct = ((ctx.parsed / total) * 100).toFixed(1);
+                  return ctx.label + ': KES ' + ctx.parsed.toLocaleString() + ' (' + pct + '%)';
+                },
+              },
+            },
+          },
+        },
+      });
+    } catch (e) {
+      console.error('BizNova chart error (payoutPieChart):', e);
+      showError('payoutPieChart', 'Chart failed to load: ' + e.message);
+    }
+  }
+
+  window.__initAdminCharts = initCharts;
+  // If Chart.js already finished loading before this script ran (normal case),
+  // just go — don't wait for an onload that already fired.
+  if (typeof Chart !== 'undefined') initCharts();
+  // Safety net: if neither CDN's onload/onerror fires within 4s, show the error
+  // state anyway instead of leaving the boxes blank forever.
+  setTimeout(function () { if (typeof Chart === 'undefined') initCharts(); }, 4000);
+})();
+</script>
+{% endblock %}

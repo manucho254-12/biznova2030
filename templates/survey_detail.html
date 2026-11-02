@@ -1,0 +1,19 @@
+{% extends 'app_base.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}{{ survey.title }} — BizNova{% endblock %}
+{% block content %}
+<h1 style="display:flex; align-items:center; gap:10px;">{{ icon('clipboard', 26) }} {{ survey.title }}</h1>
+{% if survey.description %}<p style="color:var(--text-dim);">{{ survey.description }}</p>{% endif %}
+
+<div class="form-card" style="max-width:600px;">
+  <form method="POST" action="{{ url_for('submit_survey', survey_id=survey.id) }}">
+    {% for q in survey.questions %}
+    <div class="form-group">
+      <label>{{ loop.index }}. {{ q.question_text }}</label>
+      <textarea name="question_{{ q.id }}" rows="2" required></textarea>
+    </div>
+    {% endfor %}
+    <button type="submit" class="btn">Submit &amp; Earn KES {{ '%.0f'|format(survey.reward_amount) }}</button>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,59 @@
+{% extends 'admin/_shell.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Users — Admin{% endblock %}
+{% block page_title %}All Users{% endblock %}
+{% block content %}
+{% if users %}
+<div class="table-wrapper"><table>
+  <tr><th>Name</th><th>Username</th><th>Phone</th><th>Profile</th><th>Status</th><th>Wallet</th><th>Referred By</th><th>Joined</th><th>Action</th></tr>
+  {% for u in users %}
+  <tr>
+    <td>{{ u.full_name }}</td>
+    <td>{{ u.username }}</td>
+    <td>{{ u.phone }}</td>
+    <td style="white-space:normal; min-width:150px; font-size:0.82rem;">
+      {{ (u.gender|replace('_', ' ')|capitalize) if u.gender else '—' }}
+      &middot; {{ u.age_years ~ ' yrs' if u.age_years else '—' }}
+      &middot; {{ u.occupation_status|capitalize if u.occupation_status else '—' }}
+      {% if u.bio %}<div style="color:var(--text-dim); margin-top:2px;">{{ u.bio }}</div>{% endif %}
+    </td>
+    <td>
+      {% if u.is_suspended %}
+        <span class="status-pill status-rejected">Suspended</span>
+        {% if u.suspension_reason %}<div style="font-size:0.75rem; color:var(--text-dim); margin-top:2px;">{{ u.suspension_reason }}</div>{% endif %}
+      {% elif u.is_active_account %}
+        <span class="status-pill status-confirmed">Active</span>
+      {% else %}
+        <span class="status-pill status-pending">Not Activated</span>
+      {% endif %}
+    </td>
+    <td>KES {{ '%.0f'|format(u.wallet_balance) }}</td>
+    <td>{{ u.referred_by.username if u.referred_by else '—' }}</td>
+    <td>{{ u.created_at.strftime('%d %b %Y') }}</td>
+    <td>
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        <form method="POST" action="{{ url_for('admin_reset_user_password', user_id=u.id) }}"
+              onsubmit="return confirm('Generate a new temporary password for {{ u.username }}? Their current password will stop working immediately.');">
+          <button type="submit" class="btn btn-small">Reset Password</button>
+        </form>
+        {% if u.is_suspended %}
+        <form method="POST" action="{{ url_for('admin_unsuspend_user', user_id=u.id) }}"
+              onsubmit="return confirm('Unsuspend {{ u.username }}? They will be able to log in again.');">
+          <button type="submit" class="btn btn-small">Unsuspend</button>
+        </form>
+        {% else %}
+        <form method="POST" action="{{ url_for('admin_suspend_user', user_id=u.id) }}"
+              onsubmit="var r = prompt('Reason for suspending {{ u.username }} (e.g. suspected fraud) — shown to them by email:'); if (r === null) return false; document.getElementById('reason-{{ u.id }}').value = r; return true;">
+          <input type="hidden" name="reason" id="reason-{{ u.id }}">
+          <button type="submit" class="btn btn-small" style="background:var(--danger); border-color:var(--danger); color:#fff;">Suspend</button>
+        </form>
+        {% endif %}
+      </div>
+    </td>
+  </tr>
+  {% endfor %}
+</table></div>
+{% else %}
+<div class="empty-state">No users yet.</div>
+{% endif %}
+{% endblock %}

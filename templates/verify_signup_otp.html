@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Verify Your Email — BizNova{% endblock %}
+{% block content %}
+<div class="form-card">
+  <div class="form-card-header">
+    <div class="icon-badge-lg solid-green" style="margin: 0 auto 14px;">{{ icon('mail', 26) }}</div>
+    <h2>Verify Your Email</h2>
+    <p class="form-card-subtitle">We sent a 6-digit code to {{ masked_email }}. Enter it below within 5 minutes to continue to activation.</p>
+  </div>
+
+  <form method="POST" action="{{ url_for('verify_signup_otp') }}">
+    <div class="form-group">
+      <label>{{ icon('lock', 14) }} Verification Code</label>
+      <input type="text" name="code" maxlength="6" pattern="[0-9]{6}" inputmode="numeric"
+             placeholder="123456" required autofocus
+             style="text-align:center; letter-spacing:8px; font-size:1.3rem; font-weight:700;"
+             oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0,6)">
+    </div>
+    <button type="submit" class="btn">Verify &amp; Continue</button>
+  </form>
+
+  <form method="POST" action="{{ url_for('resend_signup_otp') }}" style="margin-top:14px;">
+    <button type="submit" class="btn btn-outline" style="width:100%;">Resend Code</button>
+  </form>
+
+  <p class="form-footer">
+    <a href="{{ url_for('register') }}">Back to sign up</a>
+  </p>
+</div>
+{% endblock %}

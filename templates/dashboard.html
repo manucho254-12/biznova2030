@@ -1,0 +1,175 @@
+{% extends 'app_base.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Dashboard — BizNova{% endblock %}
+{% block content %}
+
+{% if not user.is_active_account %}
+  <div class="flash flash-error">
+    Your account isn't verified yet. <a href="{{ url_for('activate') }}" style="text-decoration:underline;">Complete activation</a> to unlock your dashboard and start earning.
+  </div>
+{% else %}
+
+{% if fun_zone_alert %}
+  {% if fun_zone_alert.kind == 'host' %}
+  <div class="fz-notice fz-notice-host">
+    <div class="fz-notice-icon">{{ icon('award', 22) }}</div>
+    <div class="fz-notice-text">
+      <strong>You've been selected to bring today's Fun Zone topic!</strong>
+      <span>Submit a topic to open today's chat &mdash; the day's winner earns KES {{ FUN_ZONE_PRIZE|int }}.</span>
+    </div>
+    <a href="{{ url_for('fun_zone') }}" class="btn btn-small">Set the topic</a>
+  </div>
+  {% else %}
+  <div class="fz-notice">
+    <div class="fz-notice-icon">{{ icon('trophy', 22) }}</div>
+    <div class="fz-notice-text">
+      <strong>The Fun Zone is live</strong>
+      <span>Today's topic: {{ fun_zone_alert.topic }}</span>
+    </div>
+    <a href="{{ url_for('fun_zone') }}" class="btn btn-small">Join the chat</a>
+  </div>
+  {% endif %}
+{% endif %}
+
+<div class="quick-actions-row">
+  <div class="btn btn-small" style="background:var(--bg-soft); color:var(--text-dim); border:1px solid var(--border); cursor:default;">{{ icon('banknote', 15) }} Withdrawal is from: <strong style="color:var(--text); margin-left:4px;">{{ withdrawal_source }}</strong></div>
+  <a href="{{ url_for('support') }}" class="btn btn-small btn-danger" style="background:var(--bg-soft); color:var(--text); border:1px solid var(--border);">{{ icon('headset', 15) }} Contact Admin</a>
+</div>
+
+<div class="earn-banner">
+  Earn <strong>KES {{ referral_bonus }}</strong> for every friend who joins and activates their account with your referral link, plus <strong>KES {{ level2_bonus }}</strong> more when someone they refer activates too.
+  <a href="{{ url_for('referrals') }}" style="color:var(--primary); font-weight:700;">Get your link &rarr;</a>
+</div>
+
+<div class="stat-row">
+  <div class="stat-box">
+    <div class="icon-badge green">{{ icon('wallet', 20) }}</div>
+    <div class="stat-value">KES {{ '%.2f'|format(user.wallet_balance) }}</div>
+    <div class="stat-label">Wallet Balance</div>
+  </div>
+  <div class="stat-box">
+    <div class="icon-badge amber">{{ icon('trending-up', 20) }}</div>
+    <div class="stat-value">KES {{ '%.2f'|format(total_earned) }}</div>
+    <div class="stat-label">Total Earned</div>
+  </div>
+  <div class="stat-box">
+    <div class="icon-badge blue">{{ icon('banknote', 20) }}</div>
+    <div class="stat-value">KES {{ '%.2f'|format(total_withdrawn) }}</div>
+    <div class="stat-label">Total Withdrawn</div>
+  </div>
+  <div class="stat-box">
+    <div class="icon-badge pink">{{ icon('users', 20) }}</div>
+    <div class="stat-value">{{ referral_count }}</div>
+    <div class="stat-label">Referrals ({{ activated_referral_count }} activated)</div>
+  </div>
+</div>
+
+<div class="trend-row">
+  <div class="trend-card">
+    <h4>Earnings Trend (last 7 days)</h4>
+    <svg viewBox="0 0 280 90" preserveAspectRatio="none">
+      <polyline points="{{ earnings_points }}" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <div class="trend-labels">
+      {% for label in day_labels %}<span>{{ label }}</span>{% endfor %}
+    </div>
+  </div>
+  <div class="trend-card">
+    <h4>Referrals Trend (last 7 days)</h4>
+    <svg viewBox="0 0 280 90" preserveAspectRatio="none">
+      <polyline points="{{ referrals_points }}" fill="none" stroke="#fbbf24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <div class="trend-labels">
+      {% for label in day_labels %}<span>{{ label }}</span>{% endfor %}
+    </div>
+  </div>
+</div>
+
+<h2 class="section-title" style="margin-top:0;">Ways to Earn</h2>
+<div class="gradient-grid">
+  <div class="gtile referrals">
+    <div class="gtile-banner">{{ icon('users', 40) }}</div>
+    <div class="gtile-body">
+      <h3>Referrals</h3>
+      <p>Earn KES {{ referral_bonus }} for every friend who joins and activates, plus KES {{ level2_bonus }} more when their referrals activate too.</p>
+      <a href="{{ url_for('referrals') }}" class="btn btn-small">Get Referral Link</a>
+    </div>
+  </div>
+  <div class="gtile videos">
+    <div class="gtile-banner">{{ icon('video', 40) }}</div>
+    <div class="gtile-body">
+      <h3>Watching Videos</h3>
+      <p>{{ available_videos }} video{{ 's' if available_videos != 1 }} available now.</p>
+      <a href="{{ url_for('videos') }}" class="btn btn-small">Watch Videos</a>
+    </div>
+  </div>
+  <div class="gtile photos">
+    <div class="gtile-banner">{{ icon('camera', 40) }}</div>
+    <div class="gtile-body">
+      <h3>Photos</h3>
+      <p>{{ available_photos }} photo{{ 's' if available_photos != 1 }} available now.</p>
+      <a href="{{ url_for('photos') }}" class="btn btn-small">View Photos</a>
+    </div>
+  </div>
+  <div class="gtile trivia">
+    <div class="gtile-banner">{{ icon('brain', 40) }}</div>
+    <div class="gtile-body">
+      <h3>Trivia Quizzes</h3>
+      <p>{{ available_trivia }} question{{ 's' if available_trivia != 1 }} available now.</p>
+      <a href="{{ url_for('trivia') }}" class="btn btn-small">Take Quiz</a>
+    </div>
+  </div>
+  <div class="gtile writing">
+    <div class="gtile-banner">{{ icon('edit', 40) }}</div>
+    <div class="gtile-body">
+      <h3>Writing Tasks</h3>
+      <p>{{ available_writing_tasks }} task{{ 's' if available_writing_tasks != 1 }} open for applications, priced in USD.</p>
+      <a href="{{ url_for('writing_tasks') }}" class="btn btn-small">View Tasks</a>
+    </div>
+  </div>
+  <div class="gtile surveys">
+    <div class="gtile-banner">{{ icon('clipboard', 40) }}</div>
+    <div class="gtile-body">
+      <h3>Surveys</h3>
+      <p>{{ available_surveys }} survey{{ 's' if available_surveys != 1 }} available now.</p>
+      <a href="{{ url_for('surveys') }}" class="btn btn-small">Take a Survey</a>
+    </div>
+  </div>
+  <div class="gtile wallet">
+    <div class="gtile-banner">{{ icon('trophy', 40) }}</div>
+    <div class="gtile-body">
+      <h3>Fun Zone</h3>
+      <p>Weekend chat on Fridays, Saturdays and Sundays &mdash; the day's winner earns KES {{ FUN_ZONE_PRIZE|int }}.</p>
+      <a href="{{ url_for('fun_zone') }}" class="btn btn-small">Open Fun Zone</a>
+    </div>
+  </div>
+  <div class="gtile videos">
+    <div class="gtile-banner">{{ icon('megaphone', 40) }}</div>
+    <div class="gtile-body">
+      <h3>Product Ads</h3>
+      <p>{{ available_product_ads }} product{{ 's' if available_product_ads != 1 }} available now.</p>
+      <a href="{{ url_for('product_ads') }}" class="btn btn-small">View Products</a>
+    </div>
+  </div>
+</div>
+
+{% endif %}
+{% if gig_popup %}
+<div class="modal-overlay" id="gig-popup-overlay">
+  <div class="modal-box">
+    {% if gig_popup.image_filename %}
+      <img src="{{ url_for('static', filename='uploads/gigs/' + gig_popup.image_filename) }}" alt=""
+           style="width:100%; max-height:240px; object-fit:cover; border-radius:10px; margin-bottom:14px; display:block;">
+    {% else %}
+      <div class="icon-badge-lg green" style="margin: 0 auto 16px;">{{ icon('briefcase', 28) }}</div>
+    {% endif %}
+    <p style="text-align:center; margin:0 0 6px;"><span class="gig-free gig-free-inline">NEW FREE GIG</span></p>
+    <h3 style="text-align:center; margin:0 0 20px;">{{ gig_popup.title }}</h3>
+    <div style="display:flex; gap:10px;">
+      <a href="{{ url_for('gig_detail', gig_id=gig_popup.id) }}" class="btn">View Gig</a>
+      <button class="btn btn-outline" style="width:100%;" onclick="document.getElementById('gig-popup-overlay').remove()">Dismiss</button>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

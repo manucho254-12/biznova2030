@@ -1,0 +1,68 @@
+{% extends 'admin/_shell.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Add Value — Admin{% endblock %}
+{% block page_title %}{{ icon('banknote', 26) }} Add Value{% endblock %}
+{% block content %}
+<p style="color:var(--text-dim);">
+  Record money you've physically deposited into the site's till/paybill — it's added straight to
+  Net Position. Whenever you add a reward amount elsewhere (e.g. a new Product), that amount is
+  automatically deducted from Net Position the moment you create it, so this figure always
+  reflects what's actually left to cover.
+</p>
+
+<div class="kpi-grid" style="margin-bottom:20px;">
+  <div class="kpi-card">
+    <div class="kpi-card-top">
+      <div class="icon-badge {{ 'green' if ledger_balance >= 0 else 'pink' }}">{{ icon('bar-chart', 18) }}</div>
+      <div class="kpi-card-label">Net Position (from deposits)</div>
+    </div>
+    <div class="kpi-card-value" style="color:{{ '#4ade80' if ledger_balance >= 0 else '#f87171' }};">KES {{ '%.0f'|format(ledger_balance) }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-card-top">
+      <div class="icon-badge green">{{ icon('trending-up', 18) }}</div>
+      <div class="kpi-card-label">Total Deposited</div>
+    </div>
+    <div class="kpi-card-value">KES {{ '%.0f'|format(total_deposits) }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-card-top">
+      <div class="icon-badge pink">{{ icon('trending-down', 18) }}</div>
+      <div class="kpi-card-label">Total Committed (rewards)</div>
+    </div>
+    <div class="kpi-card-value">KES {{ '%.0f'|format(total_debits) }}</div>
+  </div>
+</div>
+
+<div class="form-card" style="max-width:480px;">
+  <h2>Deposit Money</h2>
+  <form method="POST" action="{{ url_for('admin_add_value') }}">
+    <div class="form-group">
+      <label>Amount (KES)</label>
+      <input type="number" name="amount" step="1" min="1" required autofocus>
+    </div>
+    <div class="form-group">
+      <label>Note (optional)</label>
+      <input type="text" name="note" placeholder="e.g. Topped up M-Pesa till">
+    </div>
+    <button type="submit" class="btn">Add to Net Position</button>
+  </form>
+</div>
+
+<h2 class="section-title">Recent Ledger Activity</h2>
+{% if entries %}
+<div class="table-wrapper"><table>
+  <tr><th>Date</th><th>Type</th><th>Amount</th><th>Note</th></tr>
+  {% for e in entries %}
+  <tr>
+    <td>{{ e.created_at.strftime('%d %b %Y, %H:%M') }}</td>
+    <td>{% if e.entry_type == 'deposit' %}<span style="color:var(--primary);">Deposit</span>{% else %}<span style="color:var(--danger-text);">Debit</span>{% endif %}</td>
+    <td>{{ '+' if e.entry_type == 'deposit' else '-' }}KES {{ '%.0f'|format(e.amount) }}</td>
+    <td>{{ e.description or '—' }}</td>
+  </tr>
+  {% endfor %}
+</table></div>
+{% else %}
+<div class="empty-state">No deposits or reward commitments recorded yet.</div>
+{% endif %}
+{% endblock %}

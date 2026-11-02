@@ -1,0 +1,96 @@
+{% extends 'app_base.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Videos — BizNova{% endblock %}
+{% block content %}
+<h1 style="display:flex; align-items:center; gap:10px;">{{ icon('video', 26) }} Today's Videos</h1>
+<p style="color:var(--text-dim);">Watch each video to earn. Videos expire 24 hours after being posted.</p>
+
+{% if videos %}
+<div class="grid-3">
+  {% for video in videos %}
+  <div class="tile">
+    <video id="video-{{ video.id }}" controls preload="metadata" src="{{ video.video_src() }}"
+           ondurationchange="initVideoTracker({{ video.id }}, {{ video.min_watch_seconds }})"
+           ontimeupdate="trackVideoWatch({{ video.id }}, {{ video.min_watch_seconds }})"></video>
+    <div class="tile-body">
+      <span class="reward-tag">Earn KES {{ '%.0f'|format(video.reward_amount) }}</span>
+      <p>{{ video.title }}</p>
+      {% if video.id in watched_ids %}
+        <span class="badge-done">{{ icon('check-circle', 15) }} Watched &mdash; Earned!</span>
+      {% else %}
+        <div id="watch-progress-{{ video.id }}" class="field-hint" style="margin-bottom:8px;">
+          Watch at least {{ (video.min_watch_seconds / 60)|round(1) }} min to unlock your reward.
+        </div>
+        <button class="btn btn-small" id="claim-btn-{{ video.id }}" disabled
+                onclick="watchVideo({{ video.id }}, this)">{{ icon('play', 15) }} Watch to Unlock</button>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">No videos available right now. Check back soon!</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+const videoWatchedSeconds = {};
+const videoLastTime = {};
+
+function initVideoTracker(id, minSeconds) {
+  videoWatchedSeconds[id] = videoWatchedSeconds[id] || 0;
+}
+
+function trackVideoWatch(id, minSeconds) {
+  const el = document.getElementById('video-' + id);
+  if (!el) return;
+  const last = videoLastTime[id] || 0;
+  const current = el.currentTime;
+
+  // Only count forward, real-time progress (ignore seeks/skips ahead).
+  if (current > last && current - last < 1.5) {
+    videoWatchedSeconds[id] = (videoWatchedSeconds[id] || 0) + (current - last);
+  }
+  videoLastTime[id] = current;
+
+  const required = Math.min(minSeconds, el.duration || minSeconds);
+  const progressEl = document.getElementById('watch-progress-' + id);
+  const btn = document.getElementById('claim-btn-' + id);
+  if (!btn) return;
+
+  if (videoWatchedSeconds[id] >= required) {
+    btn.disabled = false;
+    btn.innerHTML = `{{ icon('play', 15) }} Claim Your Reward`;
+    if (progressEl) progressEl.textContent = "You've watched enough — claim your reward below!";
+  } else if (progressEl) {
+    const remaining = Math.max(0, Math.ceil(required - videoWatchedSeconds[id]));
+    progressEl.textContent = `Keep watching — ${remaining}s more to unlock your reward.`;
+  }
+}
+
+function watchVideo(videoId, btn) {
+  btn.disabled = true;
+  btn.textContent = 'Submitting...';
+  fetch(`/videos/${videoId}/watch`, { method: 'POST' })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        btn.outerHTML = `<span class="badge-done">{{ icon('check-circle', 15) }} Watched &mdash; Earned!</span>`;
+        const balEl = document.getElementById('wallet-balance');
+        if (balEl && data.new_balance !== undefined) {
+          balEl.textContent = 'KES ' + data.new_balance.toFixed(2);
+        }
+      } else {
+        alert(data.message);
+        btn.disabled = false;
+        btn.textContent = 'Claim Your Reward';
+      }
+    })
+    .catch(() => {
+      alert('Something went wrong. Please try again.');
+      btn.disabled = false;
+    });
+}
+</script>
+{% endblock %}

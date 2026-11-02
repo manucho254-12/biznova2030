@@ -1,0 +1,30 @@
+{% extends 'app_base.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}{{ gig.title }} — Gigs — BizNova{% endblock %}
+{% block content %}
+<p><a href="{{ url_for('gigs') }}" style="color:var(--primary); font-weight:600;">&larr; Back to Gigs</a></p>
+
+<div class="gig-detail">
+  {% if gig.image_filename %}
+  <div class="gig-detail-media">
+    <img src="{{ url_for('static', filename='uploads/gigs/' + gig.image_filename) }}" alt="{{ gig.title }}">
+  </div>
+  {% endif %}
+  <div class="gig-detail-body">
+    <span class="gig-free gig-free-inline">FREE</span>
+    <h1 style="margin:10px 0 18px;">{{ gig.title }}</h1>
+
+    <h3 class="gig-section-title">Notes &amp; Description</h3>
+    <div class="gig-notes">{{ gig.description or 'No additional notes were provided for this gig.' }}</div>
+
+    <div class="gig-actions">
+      {% if gig.link_url %}
+      <a href="{{ gig.link_url }}" target="_blank" rel="noopener noreferrer" class="btn">{{ icon('external-link', 16) }} Open Gig Link</a>
+      {% endif %}
+      {% if gig.whatsapp_link %}
+      <a href="{{ gig.whatsapp_link }}?text={{ ('Hello, I am interested in the gig: ' ~ gig.title)|urlencode }}" target="_blank" rel="noopener noreferrer" class="btn btn-whatsapp">{{ icon('whatsapp', 18) }} Chat on WhatsApp</a>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

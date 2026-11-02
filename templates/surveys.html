@@ -1,0 +1,27 @@
+{% extends 'app_base.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Surveys — BizNova{% endblock %}
+{% block content %}
+<h1 style="display:flex; align-items:center; gap:10px;">{{ icon('clipboard', 26) }} Surveys</h1>
+<p style="color:var(--text-dim);">Answer a quick survey and get paid instantly to your wallet.</p>
+
+{% if surveys %}
+  {% for s in surveys %}
+  <div class="survey-card">
+    <h3 style="margin:0 0 8px;">{{ s.title }}</h3>
+    <p style="color:var(--text-dim); margin:0 0 12px;">{{ s.description or (s.questions|length ~ ' questions') }}</p>
+    <div class="task-meta">
+      <span class="task-meta-item">{{ icon('banknote', 14) }} KES {{ '%.0f'|format(s.reward_amount) }}</span>
+      <span class="task-meta-item">{{ icon('clipboard', 14) }} {{ s.questions|length }} question{{ 's' if s.questions|length != 1 }}</span>
+    </div>
+    {% if s.id in completed_ids %}
+      <span class="badge-done">{{ icon('check-circle', 15) }} Completed &mdash; Earned KES {{ '%.0f'|format(s.reward_amount) }}</span>
+    {% else %}
+      <a href="{{ url_for('survey_detail', survey_id=s.id) }}" class="btn btn-small">Start Survey</a>
+    {% endif %}
+  </div>
+  {% endfor %}
+{% else %}
+<div class="empty-state">No surveys available right now. Check back soon!</div>
+{% endif %}
+{% endblock %}

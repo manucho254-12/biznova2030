@@ -1,0 +1,93 @@
+{% extends 'auth_base.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Register — BizNova{% endblock %}
+{% block content %}
+<div class="form-card form-card-wide">
+  <h2>Create Account</h2>
+  <p class="form-card-subtitle">Join BizNova and start earning in minutes.</p>
+
+  <form method="POST" action="{{ url_for('register') }}">
+    <div class="form-row">
+      <div class="form-group">
+        <label>{{ icon('user', 14) }} Full Name</label>
+        <input type="text" name="full_name" placeholder="e.g. Jane Wanjiru" required>
+      </div>
+      <div class="form-group">
+        <label>{{ icon('tag', 14) }} Username</label>
+        <input type="text" name="username" placeholder="e.g. janew" required>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>{{ icon('mail', 14) }} Email</label>
+      <input type="email" name="email" placeholder="you@example.com" required>
+    </div>
+
+    <div class="form-group">
+      <label>{{ icon('phone', 14) }} Phone Number</label>
+      <div class="phone-input-group">
+        <span class="phone-prefix">+254</span>
+        <input type="tel" name="phone_digits" placeholder="712345678" required
+               maxlength="9" pattern="[0-9]{9}" inputmode="numeric"
+               title="Enter 9 digits after 254, e.g. 712345678"
+               oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0,9)">
+      </div>
+      <p class="field-hint">Enter your number without the leading 0 — e.g. 0712345678 becomes 712345678.</p>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>{{ icon('lock', 14) }} Password</label>
+        <div class="password-input-group">
+          <input type="password" name="password" id="password" required minlength="6">
+          <button type="button" class="password-toggle" onclick="togglePassword('password', this)">{{ icon('eye', 16) }}</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>{{ icon('lock', 14) }} Confirm Password</label>
+        <div class="password-input-group">
+          <input type="password" name="confirm_password" id="confirm_password" required minlength="6">
+          <button type="button" class="password-toggle" onclick="togglePassword('confirm_password', this)">{{ icon('eye', 16) }}</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>{{ icon('award', 14) }} Referral Code {{ '' if ref_code else '(optional)' }}</label>
+      {% if ref_code %}
+        <div class="locked-input-group">
+          <input type="text" name="referral_code" value="{{ ref_code }}" readonly>
+          <span class="locked-badge">{{ icon('lock', 13) }} Applied</span>
+        </div>
+        <p class="field-hint">You were referred by a friend </p>
+      {% else %}
+        <input type="text" name="referral_code" value="" placeholder="e.g. AB12CD34">
+      {% endif %}
+    </div>
+
+    <div class="form-group" style="display:flex; align-items:flex-start; gap:8px; margin-top:12px;">
+      <input type="checkbox" name="agree_terms" id="agree_terms" required style="width:16px; height:16px; margin-top:3px; flex-shrink:0;">
+      <label for="agree_terms" style="font-size:0.8rem; color:var(--text-dim); font-weight:normal;">
+        I have read and agree to the
+        <a href="{{ url_for('terms') }}" target="_blank">Terms of Service</a> and
+        <a href="{{ url_for('privacy') }}" target="_blank">Privacy Policy</a>.
+      </label>
+    </div>
+    <button type="submit" class="btn" style="margin-top:6px;">Create Account</button>
+  </form>
+  <p class="form-footer">Already have an account? <a href="{{ url_for('login') }}">Log in</a></p>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function togglePassword(fieldId, btn) {
+  const input = document.getElementById(fieldId);
+  const showing = input.type === 'text';
+  input.type = showing ? 'password' : 'text';
+  btn.innerHTML = showing
+    ? `{{ icon("eye", 16) }}`
+    : `{{ icon("eye-off", 16) }}`;
+}
+</script>
+{% endblock %}

@@ -1,0 +1,79 @@
+{% extends 'admin/_shell.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Manage Products — Admin{% endblock %}
+{% block page_title %}Manage Product Ads{% endblock %}
+{% block content %}
+<div class="form-card" style="max-width:520px;">
+  <h2>Add Product Ad</h2>
+  <form method="POST" action="{{ url_for('admin_products') }}" enctype="multipart/form-data">
+    <div class="form-group">
+      <label>Title</label>
+      <input type="text" name="title" required>
+    </div>
+    <div class="form-group">
+      <label>Description (optional)</label>
+      <textarea name="description" rows="2"></textarea>
+    </div>
+    <div class="form-group">
+      <label>Image — upload from your device (optional)</label>
+      <input type="file" name="image" accept="image/*">
+    </div>
+    <div class="form-group">
+      <label>Video — upload from your device (optional)</label>
+      <input type="file" name="video" accept="video/*">
+      <p style="color:var(--text-dim); font-size:0.8rem; margin:4px 0 0;">mp4, webm, mov, or ogg. If both an image and a video are provided, the video is shown.</p>
+    </div>
+    <div class="form-group">
+      <label>Or a Video URL instead (optional)</label>
+      <input type="url" name="video_url" placeholder="https://...">
+      <p style="color:var(--text-dim); font-size:0.8rem; margin:4px 0 0;">Use this instead of uploading if the video is already hosted elsewhere.</p>
+    </div>
+    <div class="form-group">
+      <label>Product/Site Link (optional)</label>
+      <input type="url" name="link_url" placeholder="https://...">
+      <p style="color:var(--text-dim); font-size:0.8rem; margin:4px 0 0;">If provided, users can tap "Visit Site" to go there. Leave blank to just showcase the image/video with no link.</p>
+    </div>
+    <div class="form-group">
+      <label>Reward for Viewing (KES, optional)</label>
+      <input type="number" name="reward_amount" value="0" step="1" min="0">
+      <p style="color:var(--text-dim); font-size:0.8rem; margin:4px 0 0;">If set above 0, users earn this amount once for checking out the ad, and the login notification will mention it.</p>
+    </div>
+    <button type="submit" class="btn">Add Product Ad</button>
+  </form>
+  <p class="form-footer" style="text-align:left;">Users will get a popup notification the next time they log in.</p>
+</div>
+
+<h2 class="section-title">All Products</h2>
+{% if ads %}
+<div class="grid-3">
+  {% for ad in ads %}
+  <div class="tile">
+    {% if ad.video_filename %}
+      <video src="{{ url_for('static', filename='uploads/ads/videos/' + ad.video_filename) }}" controls style="width:100%; height:200px; object-fit:contain; display:block; background:var(--bg-soft);"></video>
+    {% elif ad.video_url %}
+      <video src="{{ ad.video_url }}" controls style="width:100%; height:200px; object-fit:contain; display:block; background:var(--bg-soft);"></video>
+    {% elif ad.image_filename %}
+      <img src="{{ url_for('static', filename='uploads/ads/images/' + ad.image_filename) }}" alt="">
+    {% endif %}
+    <div class="tile-body">
+      <h3 style="margin:0 0 6px;">{{ ad.title }}</h3>
+      {% if ad.reward_amount > 0 %}<span class="reward-tag">Earn KES {{ '%.0f'|format(ad.reward_amount) }}</span>{% endif %}
+      <p>{{ ad.description or '—' }}</p>
+      {% if ad.link_url %}
+      <p style="font-size:0.8rem;"><a href="{{ ad.link_url }}" target="_blank">{{ ad.link_url }}</a></p>
+      {% else %}
+      <p style="font-size:0.8rem; color:var(--text-dim);">No destination link — media only</p>
+      {% endif %}
+      <form method="POST" action="{{ url_for('toggle_product_ad', ad_id=ad.id) }}">
+        <button type="submit" class="btn btn-small {{ '' if ad.active else 'btn-danger' }}">
+          {{ 'Active — Click to Deactivate' if ad.active else 'Inactive — Click to Activate' }}
+        </button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">No product ads yet.</div>
+{% endif %}
+{% endblock %}

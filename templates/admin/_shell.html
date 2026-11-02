@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}Admin — BizNova{% endblock %}</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon.png') }}">
+<script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+{% from '_icons.html' import icon %}
+</head>
+<body class="admin-shell-body">
+<div class="admin-shell">
+  <div class="admin-sidebar-backdrop" id="adminSidebarBackdrop" onclick="document.getElementById('adminSidebar').classList.remove('open'); this.classList.remove('show');"></div>
+  <aside class="admin-sidebar" id="adminSidebar">
+    <div class="admin-sidebar-brand">
+      <img src="{{ url_for('static', filename='img/logo.png') }}" alt="BizNova" style="height:26px; width:26px; border-radius:5px; flex-shrink:0;">
+      <div>
+        <div class="admin-sidebar-brand-text">Biz<span>Nova</span></div>
+        <div class="admin-sidebar-brand-sub">Admin Panel</div>
+      </div>
+      <button type="button" class="admin-sidebar-close" onclick="document.getElementById('adminSidebar').classList.remove('open'); document.getElementById('adminSidebarBackdrop').classList.remove('show');" aria-label="Close menu">{{ icon('x-circle', 20) }}</button>
+    </div>
+
+    <nav class="admin-sidebar-nav">
+      <div class="admin-nav-group-label">Overview</div>
+      <a href="{{ url_for('admin_dashboard') }}" class="{{ 'active' if request.endpoint == 'admin_dashboard' }}" onclick="document.getElementById('adminSidebar').classList.remove('open'); document.getElementById('adminSidebarBackdrop').classList.remove('show');">{{ icon('grid', 16) }} Dashboard</a>
+
+      <div class="admin-nav-group-label">Content</div>
+      <a href="{{ url_for('admin_photos') }}" class="{{ 'active' if request.endpoint == 'admin_photos' }}">{{ icon('camera', 16) }} Photos</a>
+      <a href="{{ url_for('admin_videos') }}" class="{{ 'active' if request.endpoint == 'admin_videos' }}">{{ icon('video', 16) }} Videos</a>
+      <a href="{{ url_for('admin_trivia') }}" class="{{ 'active' if request.endpoint == 'admin_trivia' }}">{{ icon('brain', 16) }} Trivia</a>
+      <a href="{{ url_for('admin_tasks') }}" class="{{ 'active' if request.endpoint == 'admin_tasks' }}">{{ icon('edit', 16) }} Writing Tasks</a>
+      <a href="{{ url_for('admin_surveys') }}" class="{{ 'active' if request.endpoint == 'admin_surveys' }}">{{ icon('clipboard', 16) }} Surveys</a>
+
+      <div class="admin-nav-group-label">Commerce</div>
+      <a href="{{ url_for('admin_products') }}" class="{{ 'active' if request.endpoint == 'admin_products' }}">{{ icon('megaphone', 16) }} Products</a>
+      <a href="{{ url_for('admin_sell_products') }}" class="{{ 'active' if request.endpoint == 'admin_sell_products' }}">{{ icon('tag', 16) }} Sell Products</a>
+      <a href="{{ url_for('admin_gigs') }}" class="{{ 'active' if request.endpoint == 'admin_gigs' }}">{{ icon('briefcase', 16) }} Gigs</a>
+      <a href="{{ url_for('admin_advertise_requests') }}" class="{{ 'active' if request.endpoint == 'admin_advertise_requests' }}">{{ icon('inbox', 16) }} Ad Requests {% if pending_advertise_requests %}<span class="admin-nav-badge">{{ pending_advertise_requests }}</span>{% endif %}</a>
+
+      <div class="admin-nav-group-label">Finance</div>
+      <a href="{{ url_for('admin_add_value') }}" class="{{ 'active' if request.endpoint == 'admin_add_value' }}">{{ icon('banknote', 16) }} Add Value</a>
+      <a href="{{ url_for('admin_payments') }}" class="{{ 'active' if request.endpoint == 'admin_payments' }}">{{ icon('banknote', 16) }} Payments {% if pending_payments %}<span class="admin-nav-badge">{{ pending_payments }}</span>{% endif %}</a>
+      <a href="{{ url_for('admin_withdrawals') }}" class="{{ 'active' if request.endpoint == 'admin_withdrawals' }}">{{ icon('wallet', 16) }} Withdrawals {% if pending_withdrawals %}<span class="admin-nav-badge">{{ pending_withdrawals }}</span>{% endif %}</a>
+      <a href="{{ url_for('admin_withdrawal_fees') }}" class="{{ 'active' if request.endpoint == 'admin_withdrawal_fees' }}">{{ icon('tag', 16) }} Withdrawal Fees</a>
+
+      <div class="admin-nav-group-label">People</div>
+      <a href="{{ url_for('admin_fun_zone') }}" class="{{ 'active' if request.endpoint in ['admin_fun_zone', 'admin_fun_zone_session'] }}">{{ icon('trophy', 16) }} Fun Zone</a>
+      <a href="{{ url_for('admin_users') }}" class="{{ 'active' if request.endpoint == 'admin_users' }}">{{ icon('users', 16) }} Users</a>
+      <a href="{{ url_for('admin_password_resets') }}" class="{{ 'active' if request.endpoint == 'admin_password_resets' }}">{{ icon('lock', 16) }} Password Resets {% if pending_password_resets %}<span class="admin-nav-badge">{{ pending_password_resets }}</span>{% endif %}</a>
+      <a href="{{ url_for('admin_leaderboard') }}" class="{{ 'active' if request.endpoint == 'admin_leaderboard' }}">{{ icon('award', 16) }} Leaderboard</a>
+      <a href="{{ url_for('admin_support_messages') }}" class="{{ 'active' if request.endpoint == 'admin_support_messages' }}">{{ icon('headset', 16) }} Support {% if pending_support_messages %}<span class="admin-nav-badge">{{ pending_support_messages }}</span>{% endif %}</a>
+
+      <div class="admin-nav-group-label">System</div>
+      <a href="{{ url_for('admin_reports') }}" class="{{ 'active' if request.endpoint in ['admin_reports', 'admin_reports_download'] }}">{{ icon('download', 16) }} Reports</a>
+      <a href="{{ url_for('admin_task_submissions') }}" class="{{ 'active' if request.endpoint == 'admin_task_submissions' }}">{{ icon('inbox', 16) }} Submissions {% if pending_task_submissions %}<span class="admin-nav-badge">{{ pending_task_submissions }}</span>{% endif %}</a>
+      <a href="{{ url_for('admin_settings') }}" class="{{ 'active' if request.endpoint == 'admin_settings' }}">{{ icon('settings', 16) }} Settings</a>
+    </nav>
+
+    <a href="{{ url_for('admin_logout') }}" class="admin-sidebar-logout">{{ icon('logout', 16) }} Logout</a>
+  </aside>
+
+  <div class="admin-main">
+    <header class="admin-topbar">
+      <div class="admin-topbar-title">
+        <h1>{% block page_title %}Overview{% endblock %}</h1>
+        <p>{% block page_subtitle %}{% endblock %}</p>
+      </div>
+      <div style="display:flex; align-items:center; gap:12px;">
+        {% include '_theme_toggle.html' %}
+        <div class="admin-topbar-badge">
+          <span class="dot"></span> System Operational
+        </div>
+        <button type="button" class="admin-menu-btn" onclick="document.getElementById('adminSidebar').classList.add('open'); document.getElementById('adminSidebarBackdrop').classList.add('show');" aria-label="Open menu">
+          {{ icon('menu', 20) }}
+        </button>
+      </div>
+    </header>
+    <div class="admin-content">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="flash-container">
+          {% for category, message in messages %}
+            <div class="flash flash-{{ category }}">{{ message }}</div>
+          {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+    </div>
+  </div>
+</div>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

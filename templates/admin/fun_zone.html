@@ -1,0 +1,112 @@
+{% extends 'admin/_shell.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Fun Zone — Admin{% endblock %}
+{% block page_title %}{{ icon('trophy', 26) }} Fun Zone{% endblock %}
+{% block page_subtitle %}Weekend community chat — opened by you on Fridays, Saturdays and Sundays{% endblock %}
+{% block content %}
+
+<div class="kpi-grid" style="margin-bottom:24px;">
+  <div class="kpi-card">
+    <div class="kpi-card-label">Today</div>
+    <div class="kpi-card-value">{{ today_name }}</div>
+    <div class="kpi-card-label">{{ 'Fun Zone day' if is_fz_day else 'Not a Fun Zone day' }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-card-label">Daily prize</div>
+    <div class="kpi-card-value">KES {{ '%.0f'|format(prize) }}</div>
+    <div class="kpi-card-label">Credited to the winner's wallet</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-card-label">Prizes paid so far</div>
+    <div class="kpi-card-value">KES {{ '%.0f'|format(total_prizes) }}</div>
+    <div class="kpi-card-label">Across all sessions</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-card-label">Active members</div>
+    <div class="kpi-card-value">{{ active_member_count }}</div>
+    <div class="kpi-card-label">Eligible to chat</div>
+  </div>
+</div>
+
+<h2 class="section-title" style="margin-top:0;">Today's session</h2>
+
+{% if today_session %}
+  <div class="card" style="margin-bottom:28px; display:flex; flex-wrap:wrap; gap:16px; align-items:center; justify-content:space-between;">
+    <div style="min-width:240px; flex:1;">
+      <span class="status-pill {{ 'status-confirmed' if today_session.status == 'open' else ('status-pending' if today_session.status == 'awaiting_topic' else 'status-rejected') }}">
+        {{ {'open': 'Live', 'awaiting_topic': 'Waiting for topic', 'closed': 'Closed'}[today_session.status] }}
+      </span>
+      <div style="margin-top:8px; font-weight:600; color:var(--heading);">
+        {{ today_session.topic if today_session.topic else 'Waiting for @' ~ (today_session.host.username if today_session.host else 'a member') ~ ' to submit the topic' }}
+      </div>
+    </div>
+    <a href="{{ url_for('admin_fun_zone_session', session_id=today_session.id) }}" class="btn btn-small">Manage session</a>
+  </div>
+
+{% elif is_fz_day %}
+  <div class="fz-open-grid">
+    <div class="form-card" style="max-width:none; margin:0;">
+      <h2>I'll bring the topic</h2>
+      <p class="form-card-subtitle" style="text-align:center; margin-bottom:16px;">Write today's topic and open the chat straight away.</p>
+      <form method="POST" action="{{ url_for('admin_fun_zone_open') }}">
+        <input type="hidden" name="mode" value="admin">
+        <div class="form-group">
+          <label for="topic">Topic</label>
+          <textarea id="topic" name="topic" rows="3" minlength="5" maxlength="300" required placeholder="e.g. Which side hustle would you start with KES 5,000, and why?"></textarea>
+        </div>
+        <button type="submit" class="btn">Open the chat</button>
+      </form>
+    </div>
+    <div class="form-card" style="max-width:none; margin:0;">
+      <h2>Let the system pick a member</h2>
+      <p class="form-card-subtitle" style="text-align:center; margin-bottom:16px;">A random active member is selected and notified on their dashboard. The chat opens as soon as they submit the topic. You can pick someone else or set the topic yourself at any time.</p>
+      <form method="POST" action="{{ url_for('admin_fun_zone_open') }}">
+        <input type="hidden" name="mode" value="system">
+        <button type="submit" class="btn">Select a member</button>
+      </form>
+    </div>
+  </div>
+
+{% else %}
+  <div class="empty-state" style="margin-bottom:28px;">
+    The Fun Zone can only be opened on <strong>Friday, Saturday or Sunday</strong>. Today is {{ today_name }}.
+  </div>
+{% endif %}
+
+<h2 class="section-title">Full history</h2>
+<p style="color:var(--text-dim); margin-top:-6px;">Every session ever held, with its day, date and topic. Members only see the last 24 hours.</p>
+{% if sessions %}
+<input type="search" id="fz-admin-search" placeholder="Search by day, date or topic…" style="max-width:360px; margin-bottom:12px;">
+<div class="table-wrapper"><table id="fz-admin-table">
+  <tr><th>Day</th><th>Date</th><th>Topic</th><th>Set by</th><th>Status</th><th>Messages</th><th>Members</th><th>Winner</th><th></th></tr>
+  {% for s in sessions %}
+  <tr>
+    <td><strong>{{ s.session_date.strftime('%A') }}</strong></td>
+    <td>{{ s.session_date.strftime('%d %b %Y') }}</td>
+    <td style="white-space:normal; min-width:200px;">{{ s.topic or '—' }}</td>
+    <td>{% if s.topic_source == 'member' %}@{{ s.host.username if s.host else 'member' }}{% elif s.topic_source == 'admin' %}Admin{% else %}{{ ('@' ~ s.host.username ~ ' (pending)') if s.host else '—' }}{% endif %}</td>
+    <td><span class="status-pill {{ 'status-confirmed' if s.status == 'open' else ('status-pending' if s.status == 'awaiting_topic' else 'status-rejected') }}">{{ {'open': 'Live', 'awaiting_topic': 'Waiting', 'closed': 'Closed'}[s.status] }}</span></td>
+    <td>{{ stats.get(s.id, {}).get('messages', 0) }}</td>
+    <td>{{ stats.get(s.id, {}).get('participants', 0) }}</td>
+    <td>{% if s.winner %}@{{ s.winner.username }} &middot; KES {{ '%.0f'|format(s.prize_amount) }}{% else %}—{% endif %}</td>
+    <td><a href="{{ url_for('admin_fun_zone_session', session_id=s.id) }}" style="color:var(--primary); font-weight:600;">View</a></td>
+  </tr>
+  {% endfor %}
+</table></div>
+{% else %}
+<div class="empty-state">No Fun Zone sessions yet.</div>
+{% endif %}
+<script>
+(function () {
+  var box = document.getElementById('fz-admin-search');
+  if (!box) return;
+  box.addEventListener('input', function () {
+    var q = box.value.trim().toLowerCase();
+    document.querySelectorAll('#fz-admin-table tr').forEach(function (row, i) {
+      if (i === 0) return;
+      row.style.display = !q || row.textContent.toLowerCase().indexOf(q) !== -1 ? '' : 'none';
+    });
+  });
+})();
+</script>
+{% endblock %}

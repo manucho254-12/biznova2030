@@ -1,0 +1,78 @@
+{% extends 'app_base.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Referrals — BizNova{% endblock %}
+{% block content %}
+<h1 style="display:flex; align-items:center; gap:10px;">{{ icon('users', 26) }} Your Referrals</h1>
+
+<div class="referral-box">
+  <p style="margin:0; color:var(--text-dim);">
+    Share this link. You earn <strong style="color:var(--accent);">KES {{ bonus }}</strong> when
+    someone you invite joins and activates their account (Level 1) — and
+    <strong style="color:var(--accent);">KES {{ level2_bonus }}</strong> more whenever someone
+    <em>they</em> invite activates too (Level 2).
+  </p>
+  <code id="ref-link">{{ referral_link }}</code>
+  <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;">
+    <button class="btn btn-small" data-link="{{ referral_link }}" onclick="copyReferralLink(this)">{{ icon('link', 15) }} Copy Link</button>
+    <a class="btn btn-small" style="background:#25D366; color:#fff;" target="_blank"
+       href="https://wa.me/?text={{ share_text|urlencode }}">{{ icon('whatsapp', 15) }} WhatsApp</a>
+    <a class="btn btn-small" style="background:#2563eb; color:#fff;"
+       href="sms:?body={{ share_text|urlencode }}">{{ icon('sms', 15) }} SMS</a>
+  </div>
+</div>
+
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="value">{{ referred_users|length }}</div>
+    <div class="label">People Referred</div>
+  </div>
+  <div class="stat-card">
+    <div class="value">KES {{ '%.0f'|format(total_earned) }}</div>
+    <div class="label">Total Referral Earnings</div>
+  </div>
+  <div class="stat-card">
+    <div class="value">KES {{ '%.0f'|format(level1_earned) }}</div>
+    <div class="label">Level 1 Earnings</div>
+  </div>
+  <div class="stat-card">
+    <div class="value">KES {{ '%.0f'|format(level2_earned) }}</div>
+    <div class="label">Level 2 Earnings</div>
+  </div>
+</div>
+
+<h2 class="section-title">Referral History</h2>
+{% if referred_users %}
+<div class="table-wrapper"><table>
+  <tr><th>Name</th><th>Joined</th><th>Status</th></tr>
+  {% for u in referred_users %}
+  <tr>
+    <td>{{ u.full_name }}</td>
+    <td>{{ u.created_at.strftime('%d %b %Y') }}</td>
+    <td>
+      {% if u.is_active_account %}
+        <span class="status-pill status-confirmed">Active &mdash; Earned KES {{ bonus }}</span>
+      {% else %}
+        <span class="status-pill status-pending">Not yet activated</span>
+      {% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+</table></div>
+{% else %}
+<div class="empty-state">You haven't referred anyone yet. Share your link to start earning!</div>
+{% endif %}
+
+{% if commissions %}
+<h2 class="section-title">Earnings Breakdown</h2>
+<div class="table-wrapper"><table>
+  <tr><th>Level</th><th>Amount</th><th>Date</th></tr>
+  {% for c in commissions %}
+  <tr>
+    <td>{% if c.level == 1 %}Level 1 (direct){% else %}Level 2 (indirect){% endif %}</td>
+    <td>KES {{ '%.0f'|format(c.amount) }}</td>
+    <td>{{ c.created_at.strftime('%d %b %Y') }}</td>
+  </tr>
+  {% endfor %}
+</table></div>
+{% endif %}
+{% endblock %}

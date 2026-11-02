@@ -1,0 +1,130 @@
+{% extends 'admin/_shell.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Fun Zone session — Admin{% endblock %}
+{% block page_title %}{{ icon('trophy', 26) }} Fun Zone — {{ fz.session_date.strftime('%A, %d %b %Y') }}{% endblock %}
+{% block page_subtitle %}Chats, usernames, member profiles and the winner{% endblock %}
+{% block content %}
+
+<p><a href="{{ url_for('admin_fun_zone') }}" style="color:var(--primary); font-weight:600;">&larr; All sessions</a></p>
+
+<div class="card" style="margin-bottom:24px;">
+  <span class="status-pill {{ 'status-confirmed' if fz.status == 'open' else ('status-pending' if fz.status == 'awaiting_topic' else 'status-rejected') }}">
+    {{ {'open': 'Live', 'awaiting_topic': 'Waiting for topic', 'closed': 'Closed'}[fz.status] }}
+  </span>
+  <h3 style="margin:10px 0 6px;">{{ fz.topic or 'No topic yet' }}</h3>
+  <p style="color:var(--text-dim); margin:0; font-size:0.9rem;">
+    {% if fz.topic_source == 'member' %}Topic brought by member <strong>@{{ fz.host.username if fz.host else 'member' }}</strong>.
+    {% elif fz.topic_source == 'admin' %}Topic set by you.
+    {% elif fz.host %}The system selected <strong>@{{ fz.host.username }}</strong> ({{ fz.host.full_name }}) to bring the topic. They have been notified on their dashboard.{% endif %}
+  </p>
+  {% if fz.winner %}
+  <div class="earn-banner" style="margin:14px 0 0;">
+    {{ icon('trophy', 18) }} Winner: <strong>@{{ fz.winner.username }}</strong> ({{ fz.winner.full_name }}) &mdash; KES {{ '%.0f'|format(fz.prize_amount) }} credited.
+  </div>
+  {% endif %}
+</div>
+
+{% if can_change_topic %}
+<div class="fz-open-grid" style="margin-bottom:28px;">
+  <div class="form-card" style="max-width:none; margin:0;">
+    <h2>{{ 'Set the topic yourself' if fz.status == 'awaiting_topic' else 'Change the topic' }}</h2>
+    <form method="POST" action="{{ url_for('admin_fun_zone_set_topic', session_id=fz.id) }}">
+      <div class="form-group">
+        <textarea name="topic" rows="3" minlength="5" maxlength="300" required placeholder="Topic for today's chat">{{ fz.topic or '' }}</textarea>
+      </div>
+      <button type="submit" class="btn">{{ 'Save topic & open chat' if fz.status == 'awaiting_topic' else 'Save topic' }}</button>
+    </form>
+  </div>
+  {% if fz.status == 'awaiting_topic' %}
+  <div class="form-card" style="max-width:none; margin:0;">
+    <h2>Pick a different member</h2>
+    <p class="form-card-subtitle" style="text-align:center; margin-bottom:14px;">If the selected member isn't responding, let the system choose someone else.</p>
+    <form method="POST" action="{{ url_for('admin_fun_zone_repick', session_id=fz.id) }}">
+      <button type="submit" class="btn">Select another member</button>
+    </form>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+<h2 class="section-title" style="margin-top:0;">{{ 'Choose the winner' if not fz.prize_paid else 'Winner' }}</h2>
+{% if fz.prize_paid %}
+  <p style="color:var(--text-dim);">The KES {{ '%.0f'|format(fz.prize_amount) }} prize for this session has already been awarded.</p>
+{% elif not participants %}
+  <p style="color:var(--text-dim);">No one has posted yet, so there is no one to award. You can still close the chat without a winner below.</p>
+  {% if fz.status != 'closed' %}
+  <form method="POST" action="{{ url_for('admin_fun_zone_finish', session_id=fz.id) }}" onsubmit="return confirm('Close this chat without a winner?');">
+    <button type="submit" class="btn btn-small">Close chat</button>
+  </form>
+  {% endif %}
+{% else %}
+  <form method="POST" action="{{ url_for('admin_fun_zone_finish', session_id=fz.id) }}" class="card"
+        style="display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; margin-bottom:8px;"
+        onsubmit="return confirm('Credit KES {{ '%.0f'|format(prize) }} to the selected winner{{ ' and close the chat' if fz.status != 'closed' }}? This cannot be undone.');">
+    <div class="form-group" style="margin:0; flex:1; min-width:220px;">
+      <label for="winner_user_id">Winner (members who took part)</label>
+      <select id="winner_user_id" name="winner_user_id" required>
+        <option value="">Select a member…</option>
+        {% for u in participants %}
+        <option value="{{ u.id }}">@{{ u.username }} — {{ u.full_name }} ({{ message_counts[u.id] }} message{{ 's' if message_counts[u.id] != 1 }})</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="btn btn-small">Award KES {{ '%.0f'|format(prize) }}{{ ' & close chat' if fz.status != 'closed' }}</button>
+  </form>
+  {% if fz.status != 'closed' %}
+  <form method="POST" action="{{ url_for('admin_fun_zone_finish', session_id=fz.id) }}" onsubmit="return confirm('Close this chat without a winner?');" style="margin-bottom:8px;">
+    <button type="submit" class="btn btn-small" style="background:var(--bg-soft); color:var(--text); border:1px solid var(--border);">Close chat without a winner</button>
+  </form>
+  {% endif %}
+{% endif %}
+
+<h2 class="section-title">Members who took part ({{ participants|length }})</h2>
+{% if participants %}
+<div class="table-wrapper"><table>
+  <tr><th>Member</th><th>Username</th><th>Gender</th><th>Age</th><th>Status</th><th>About</th><th>Messages</th></tr>
+  {% for u in participants %}
+  <tr>
+    <td>
+      <div style="display:flex; align-items:center; gap:10px;">
+        <div class="fz-avatar">{% if avatar_url(u) %}<img src="{{ avatar_url(u) }}" alt="">{% else %}{{ u.username[:1]|upper }}{% endif %}</div>
+        <span>{{ u.full_name }}</span>
+      </div>
+    </td>
+    <td>@{{ u.username }}</td>
+    <td>{{ (u.gender|replace('_', ' ')|capitalize) if u.gender else '—' }}</td>
+    <td>{{ u.age_years if u.age_years else '—' }}</td>
+    <td>{{ u.occupation_status|capitalize if u.occupation_status else '—' }}</td>
+    <td style="white-space:normal; min-width:180px; font-size:0.85rem;">{{ u.bio or '—' }}</td>
+    <td>{{ message_counts[u.id] }}</td>
+  </tr>
+  {% endfor %}
+</table></div>
+{% else %}
+<div class="empty-state">No members have posted in this session yet.</div>
+{% endif %}
+
+<h2 class="section-title">Chat transcript ({{ messages|length }})</h2>
+{% if messages %}
+<div class="card fz-transcript">
+  {% for m in messages %}
+  <div class="fz-transcript-row">
+    <div class="fz-avatar">{% if avatar_url(m.user) %}<img src="{{ avatar_url(m.user) }}" alt="">{% else %}{{ m.user.username[:1]|upper }}{% endif %}</div>
+    <div style="flex:1; min-width:0;">
+      <div class="fz-meta">
+        <span class="fz-name">@{{ m.user.username }}</span>
+        {% if m.user.occupation_status %}<span class="fz-tag">{{ m.user.occupation_status|capitalize }}</span>{% endif %}
+        <span class="fz-time">{{ (m.created_at + eat_offset).strftime('%H:%M') }}</span>
+      </div>
+      <div class="fz-body">{{ m.body }}</div>
+    </div>
+    <form method="POST" action="{{ url_for('admin_fun_zone_delete_message', message_id=m.id) }}" onsubmit="return confirm('Remove this message?');">
+      <button type="submit" class="fz-remove" title="Remove message" aria-label="Remove message">{{ icon('x-circle', 16) }}</button>
+    </form>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">No messages yet.</div>
+{% endif %}
+{% endblock %}

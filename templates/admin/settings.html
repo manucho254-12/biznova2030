@@ -1,0 +1,80 @@
+{% extends 'admin/_shell.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Admin Settings — BizNova{% endblock %}
+{% block page_title %}{{ icon('settings', 26) }} Admin Settings{% endblock %}
+{% block content %}
+<div class="form-card" style="max-width:480px;">
+  <h2>Change Password</h2>
+  <p style="text-align:center; color:var(--text-dim); margin-top:-10px;">Logged in as <strong>{{ admin.username }}</strong></p>
+  <form method="POST" action="{{ url_for('admin_settings') }}">
+    <div class="form-group">
+      <label>Current Password</label>
+      <input type="password" name="current_password" required>
+    </div>
+    <div class="form-group">
+      <label>New Password</label>
+      <input type="password" name="new_password" minlength="6" required>
+    </div>
+    <div class="form-group">
+      <label>Confirm New Password</label>
+      <input type="password" name="confirm_password" minlength="6" required>
+    </div>
+    <button type="submit" class="btn">Update Password</button>
+  </form>
+</div>
+
+<div class="form-card" style="max-width:480px; margin-top:20px;">
+  <h2>Login Protection</h2>
+  <p style="text-align:center; color:var(--text-dim); font-size:0.85rem; margin-top:-10px;">
+    Optionally require an email address at login, as an extra check on top of your
+    username and password.
+  </p>
+  <form method="POST" action="{{ url_for('admin_update_email') }}">
+    <div class="form-group">
+      <label>{{ icon('mail', 14) }} Admin Email</label>
+      <input type="email" name="email" value="{{ admin.email or '' }}" placeholder="you@example.com">
+      <p class="field-hint">
+        {% if admin.email %}Currently set to <strong>{{ admin.email }}</strong> — this is required at every login. Clear this field and save to remove the requirement.{% else %}Not set — login does not currently require an email match.{% endif %}
+      </p>
+    </div>
+    <button type="submit" class="btn">Save Email</button>
+  </form>
+</div>
+
+<div class="form-card" style="max-width:480px; margin-top:20px;">
+  <h2>Withdrawal Source</h2>
+  <p style="text-align:center; color:var(--text-dim); font-size:0.85rem; margin-top:-10px;">
+    Shown to every user on their dashboard, e.g. "M-Pesa Till 5502617".
+  </p>
+  <form method="POST" action="{{ url_for('admin_update_withdrawal_source') }}">
+    <div class="form-group">
+      <label>{{ icon('banknote', 14) }} Withdrawal Source</label>
+      <input type="text" name="withdrawal_source" value="{{ admin.withdrawal_source or '' }}" placeholder="M-Pesa Till 5502617">
+    </div>
+    <button type="submit" class="btn">Save</button>
+  </form>
+</div>
+
+<div class="form-card" style="max-width:480px; margin-top:20px;">
+  <h2>Leaderboard</h2>
+  <p style="text-align:center; color:var(--text-dim); font-size:0.85rem; margin-top:-10px;">
+    Currently {{ 'visible to users' if admin.leaderboard_enabled else 'hidden from users' }}. Turning
+    it off just hides it — no rankings or bonus history are deleted.
+  </p>
+  <form method="POST" action="{{ url_for('admin_toggle_leaderboard') }}">
+    <button type="submit" class="btn{{ '' if admin.leaderboard_enabled else ' btn-outline' }}">
+      {{ 'Disable Leaderboard' if admin.leaderboard_enabled else 'Enable Leaderboard' }}
+    </button>
+  </form>
+</div>
+
+<div class="card" style="max-width:480px; margin-top:20px;">
+  <h3 style="margin-top:0; display:flex; align-items:center; gap:8px;">{{ icon('shield-check', 18) }} A note on user passwords</h3>
+  <p style="color:var(--text-dim); font-size:0.88rem; margin:0;">
+    User passwords are stored as one-way hashes and can't be viewed by anyone, including admin —
+    that's what keeps accounts safe even if the database were ever exposed. If a user is locked
+    out, go to <a href="{{ url_for('admin_users') }}">Users</a> and use "Reset Password" to
+    generate a new temporary one you can share with them directly.
+  </p>
+</div>
+{% endblock %}

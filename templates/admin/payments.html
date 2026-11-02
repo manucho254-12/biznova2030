@@ -1,0 +1,30 @@
+{% extends 'admin/_shell.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Activation Payments — Admin{% endblock %}
+{% block page_title %}Pending Activation Payments{% endblock %}
+{% block content %}
+{% if payments %}
+<div class="table-wrapper"><table>
+  <tr><th>User</th><th>Phone</th><th>Amount</th><th>M-Pesa Code</th><th>Submitted</th><th>Action</th></tr>
+  {% for p in payments %}
+  <tr>
+    <td>{{ p.user.full_name }} (@{{ p.user.username }})</td>
+    <td>{{ p.user.phone }}</td>
+    <td>KES {{ '%.0f'|format(p.amount) }}</td>
+    <td>{{ p.mpesa_code }}</td>
+    <td>{{ p.created_at.strftime('%d %b %Y, %H:%M') }}</td>
+    <td style="display:flex; gap:8px;">
+      <form method="POST" action="{{ url_for('confirm_payment', payment_id=p.id) }}">
+        <button type="submit" class="btn btn-small">Confirm</button>
+      </form>
+      <form method="POST" action="{{ url_for('reject_payment', payment_id=p.id) }}">
+        <button type="submit" class="btn btn-small btn-danger">Reject</button>
+      </form>
+    </td>
+  </tr>
+  {% endfor %}
+</table></div>
+{% else %}
+<div class="empty-state">No pending payments.</div>
+{% endif %}
+{% endblock %}

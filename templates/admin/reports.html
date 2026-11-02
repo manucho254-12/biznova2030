@@ -1,0 +1,67 @@
+{% extends 'admin/_shell.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Reports — Admin{% endblock %}
+{% block page_title %}{{ icon('download', 26) }} Reports{% endblock %}
+{% block content %}
+<p style="color:var(--text-dim);">
+  A snapshot of the platform — users, money in, money out, and Net Position — branded with your
+  logo. Preview below, then download it as a PDF to share or archive.
+</p>
+
+<a href="{{ url_for('admin_reports_download') }}" class="btn" style="display:inline-flex; align-items:center; gap:8px; margin-bottom:20px;">
+  {{ icon('download', 16) }} Download PDF Report
+</a>
+
+<div class="kpi-grid">
+  <div class="kpi-card">
+    <div class="kpi-card-top">
+      <div class="icon-badge blue">{{ icon('users', 18) }}</div>
+      <div class="kpi-card-label">Total Users</div>
+    </div>
+    <div class="kpi-card-value">{{ stats.total_users }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-card-top">
+      <div class="icon-badge green">{{ icon('user-check', 18) }}</div>
+      <div class="kpi-card-label">Active (Paid)</div>
+    </div>
+    <div class="kpi-card-value">{{ stats.active_users }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-card-top">
+      <div class="icon-badge {{ 'green' if stats.net_position >= 0 else 'pink' }}">{{ icon('bar-chart', 18) }}</div>
+      <div class="kpi-card-label">Net Position</div>
+    </div>
+    <div class="kpi-card-value" style="color:{{ '#4ade80' if stats.net_position >= 0 else '#f87171' }};">KES {{ '%.0f'|format(stats.net_position) }}</div>
+  </div>
+</div>
+
+<h2 class="section-title">Money In</h2>
+<div class="table-wrapper"><table>
+  <tr><th>Item</th><th>Amount</th></tr>
+  <tr><td>Activation fees collected</td><td>KES {{ '%.0f'|format(stats.total_fees_collected) }}</td></tr>
+  <tr><td>Withdrawal transaction fees</td><td>KES {{ '%.0f'|format(stats.total_transaction_fees) }}</td></tr>
+  <tr><td>Manually deposited (Add Value)</td><td>KES {{ '%.0f'|format(stats.total_ledger_deposits) }}</td></tr>
+</table></div>
+
+<h2 class="section-title">Money Out</h2>
+<div class="table-wrapper"><table>
+  <tr><th>Item</th><th>Amount</th></tr>
+  {% for label, amount in stats.breakdown %}
+  <tr><td>{{ label }}</td><td>KES {{ '%.0f'|format(amount) }}</td></tr>
+  {% endfor %}
+  <tr><td><strong>Total rewards & referrals paid</strong></td><td><strong>KES {{ '%.0f'|format(stats.total_paid_out) }}</strong></td></tr>
+  <tr><td>Withdrawn by users</td><td>KES {{ '%.0f'|format(stats.total_withdrawn) }}</td></tr>
+  <tr><td>Committed at creation (e.g. Products)</td><td>KES {{ '%.0f'|format(stats.total_ledger_debits) }}</td></tr>
+</table></div>
+
+<h2 class="section-title">Pending Items</h2>
+<div class="table-wrapper"><table>
+  <tr><th>Item</th><th>Count</th></tr>
+  <tr><td>Pending activation payments</td><td>{{ stats.pending_payments }}</td></tr>
+  <tr><td>Pending withdrawals</td><td>{{ stats.pending_withdrawals }}</td></tr>
+  <tr><td>Writing task submissions to review</td><td>{{ stats.pending_task_submissions }}</td></tr>
+  <tr><td>New advertise requests</td><td>{{ stats.pending_advertise_requests }}</td></tr>
+  <tr><td>New support messages</td><td>{{ stats.pending_support_messages }}</td></tr>
+</table></div>
+{% endblock %}

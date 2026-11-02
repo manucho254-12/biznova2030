@@ -1,0 +1,327 @@
+{% extends 'app_base.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Fun Zone — BizNova{% endblock %}
+{% block content %}
+<h1 style="display:flex; align-items:center; gap:10px;">{{ icon('trophy', 26) }} Fun Zone</h1>
+<p style="color:var(--text-dim); max-width:720px;">
+  Our weekend community chat. Every Friday, Saturday and Sunday the admin opens a discussion topic, members chat,
+  and the day's winner is rewarded with <strong style="color:var(--primary);">KES {{ '%.0f'|format(prize) }}</strong> in their wallet.
+</p>
+
+<div class="fz-tabs" role="tablist" aria-label="Fun Zone sections">
+  <button type="button" class="fz-tab active" role="tab" data-tab="chat" aria-selected="true">{{ icon('chat', 16) }} Today's Chat{% if state == 'open' %}<span class="fz-live-dot" style="margin-left:4px;"></span>{% endif %}</button>
+  <button type="button" class="fz-tab" role="tab" data-tab="how" aria-selected="false">{{ icon('award', 16) }} How it works</button>
+  <button type="button" class="fz-tab" role="tab" data-tab="rules" aria-selected="false">{{ icon('shield-check', 16) }} House rules</button>
+  <button type="button" class="fz-tab" role="tab" data-tab="history" aria-selected="false">{{ icon('clock', 16) }} History{% if history %} <span class="fz-count">{{ history|length }}</span>{% endif %}</button>
+</div>
+
+<section class="fz-panel active" id="fz-panel-chat" role="tabpanel">
+{% if state == 'closed_day' %}
+  <div class="card fz-state">
+    <div class="icon-badge amber">{{ icon('chat', 22) }}</div>
+    <h3>The Fun Zone is closed today</h3>
+    <p>It opens on <strong>Friday, Saturday and Sunday</strong>. Come back {{ 'on ' + next_day_label if next_day_label != 'today' else 'today' }} and join the conversation &mdash; a new topic is posted each day.</p>
+  </div>
+
+{% elif state == 'not_opened' %}
+  <div class="card fz-state">
+    <div class="icon-badge amber">{{ icon('chat', 22) }}</div>
+    <h3>Today's chat hasn't opened yet</h3>
+    <p>The admin opens each day's session and brings the topic. This page updates by itself the moment the chat goes live &mdash; no need to refresh.</p>
+  </div>
+
+{% elif state == 'awaiting_topic' %}
+  {% if is_host %}
+  <div class="card fz-state fz-host">
+    <div class="icon-badge green">{{ icon('award', 22) }}</div>
+    <h3>You were selected to bring today's topic</h3>
+    <p>Pick something friendly and engaging that everyone can talk about &mdash; a question, a debate, or a fun challenge. Once you submit it, the chat opens for all members.</p>
+    <form method="POST" action="{{ url_for('fun_zone_submit_topic') }}" style="text-align:left;">
+      <div class="form-group">
+        <label for="fz-topic">Today's topic</label>
+        <textarea id="fz-topic" name="topic" rows="3" minlength="5" maxlength="300" required
+                  placeholder="e.g. What is one skill every young person in Kenya should learn this year, and why?"></textarea>
+      </div>
+      <button type="submit" class="btn">Open the chat</button>
+    </form>
+  </div>
+  {% else %}
+  <div class="card fz-state">
+    <div class="icon-badge amber">{{ icon('chat', 22) }}</div>
+    <h3>Waiting for today's topic</h3>
+    <p>A member has been selected to bring today's topic. The chat opens as soon as it is submitted &mdash; this page will update automatically.</p>
+  </div>
+  {% endif %}
+
+{% elif state in ('open', 'ended') %}
+  <div class="card fz-topic-card">
+    <div class="fz-topic-label">{{ icon('chat', 15) }} Today's topic
+      {% if state == 'open' %}<span class="fz-live"><span class="fz-live-dot"></span> Live</span>{% else %}<span class="fz-ended">Ended</span>{% endif %}
+    </div>
+    <div class="fz-topic-text" id="fz-topic-text">{{ fz.topic }}</div>
+  </div>
+
+  {% if state == 'ended' %}
+    {% if fz.winner %}
+    <div class="earn-banner fz-winner">
+      {{ icon('trophy', 20) }}
+      <span>Today's winner: <strong>@{{ fz.winner.username|mask_username }}</strong> &mdash; KES {{ '%.0f'|format(fz.prize_amount) }} has been credited to their wallet. Congratulations!</span>
+    </div>
+    {% else %}
+    <div class="earn-banner fz-winner">
+      {{ icon('clock', 20) }}
+      <span>Today's chat has ended. The admin will announce the winner shortly &mdash; check back soon.</span>
+    </div>
+    {% endif %}
+  {% endif %}
+
+  <div class="card fz-chat" id="fz-chat" data-last-id="{{ last_id }}" data-max="{{ max_len }}">
+    <div class="fz-messages" id="fz-messages" aria-live="polite">
+      <div class="fz-empty" id="fz-empty">No messages yet &mdash; be the first to share your thoughts.</div>
+    </div>
+    {% if state == 'open' %}
+    <form id="fz-form" class="fz-form" autocomplete="off">
+      <input type="text" id="fz-input" maxlength="{{ max_len }}" placeholder="Share your thoughts on the topic…" aria-label="Your message" required>
+      <button type="submit" class="btn btn-small fz-send">{{ icon('send', 15) }} Send</button>
+    </form>
+    <div class="fz-error" id="fz-error" role="alert" hidden></div>
+    {% else %}
+    <div class="fz-closed-note">This chat is closed. You can still read the conversation.</div>
+    {% endif %}
+  </div>
+  <script id="fz-initial" type="application/json">{{ messages|tojson }}</script>
+{% endif %}
+
+</section>
+
+<section class="fz-panel" id="fz-panel-how" role="tabpanel" hidden>
+  <div class="card">
+    <h3>{{ icon('award', 18) }} How it works</h3>
+    <div class="fz-steps">
+      <div class="fz-step"><span class="fz-step-num">1</span><div><strong>It opens on weekends</strong><p>The Fun Zone opens every Friday, Saturday and Sunday (East Africa Time).</p></div></div>
+      <div class="fz-step"><span class="fz-step-num">2</span><div><strong>A topic is posted</strong><p>The topic comes from the admin, or the system selects a member and notifies them on their dashboard to bring it.</p></div></div>
+      <div class="fz-step"><span class="fz-step-num">3</span><div><strong>Everyone chats</strong><p>Members discuss the topic together in one shared chat under the Today's Chat tab.</p></div></div>
+      <div class="fz-step"><span class="fz-step-num">4</span><div><strong>A winner is rewarded</strong><p>The day's winner receives <strong style="color:var(--primary);">KES {{ '%.0f'|format(prize) }}</strong> in their wallet.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="fz-panel" id="fz-panel-rules" role="tabpanel" hidden>
+  <div class="card">
+    <h3>{{ icon('shield-check', 18) }} House rules</h3>
+    <ul class="fz-list">
+      <li>Be respectful &mdash; no insults, hate speech or harassment.</li>
+      <li>No spam, links to other sites, or sharing of personal contact details.</li>
+      <li>The admin can see all messages, usernames and profile details, and may remove messages or suspend accounts that break the rules.</li>
+      <li>Add a profile picture and a short description on your <a href="{{ url_for('profile') }}" style="color:var(--primary); font-weight:600;">Profile</a> page.</li>
+    </ul>
+  </div>
+</section>
+
+<section class="fz-panel" id="fz-panel-history" role="tabpanel" hidden>
+  <p style="color:var(--text-dim); margin:0 0 14px;">Previous chats from the <strong>last 24 hours</strong>. Older conversations are only kept by the admin.</p>
+  {% if history %}
+    {% for h in history %}
+    <div class="card fz-hist" data-id="{{ h.id }}">
+      <div class="fz-hist-top">
+        <span class="fz-day">{{ h.day }}</span>
+        <span class="fz-hist-date">{{ h.date }}</span>
+      </div>
+      <div class="fz-hist-topic">{{ h.topic }}</div>
+      <div class="fz-hist-meta">
+        {{ h.messages }} message{{ 's' if h.messages != 1 }}
+        {% if h.winner %} &middot; {{ icon('trophy', 14) }} Winner: <strong>@{{ h.winner }}</strong>{% endif %}
+      </div>
+      <button type="button" class="btn btn-small btn-outline fz-hist-btn" data-id="{{ h.id }}">View conversation</button>
+      <div class="fz-hist-msgs" hidden></div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="card fz-state">
+      <div class="icon-badge amber">{{ icon('clock', 22) }}</div>
+      <h3>Nothing from the last 24 hours</h3>
+      <p>When a chat ends it stays here for 24 hours so you can catch up on what you missed.</p>
+    </div>
+  {% endif %}
+  {% if last_winner_session %}
+  <p style="color:var(--text-dim); font-size:0.9rem; margin-top:18px;">
+    {{ icon('trophy', 15) }} Most recent winner: <strong style="color:var(--text);">@{{ last_winner_session.winner.username|mask_username }}</strong>
+    &mdash; {{ last_winner_session.session_date.strftime('%A, %d %b %Y') }}.
+  </p>
+  {% endif %}
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var tabs = document.querySelectorAll('.fz-tab');
+  var panels = document.querySelectorAll('.fz-panel');
+  function show(name, remember) {
+    var found = false;
+    tabs.forEach(function (b) { if (b.getAttribute('data-tab') === name) found = true; });
+    if (!found) name = 'chat';
+    tabs.forEach(function (b) {
+      var on = b.getAttribute('data-tab') === name;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+      if (on && b.scrollIntoView) { try { b.scrollIntoView({ block: 'nearest', inline: 'center' }); } catch (e) {} }
+    });
+    panels.forEach(function (p) {
+      var on = p.id === 'fz-panel-' + name;
+      p.hidden = !on;
+      p.classList.toggle('active', on);
+    });
+    if (remember) { try { history.replaceState(null, '', '#' + name); } catch (e) {} }
+    if (name === 'chat') { var b = document.getElementById('fz-messages'); if (b) b.scrollTop = b.scrollHeight; }
+  }
+  tabs.forEach(function (b) { b.addEventListener('click', function () { show(b.getAttribute('data-tab'), true); }); });
+  show((location.hash || '').replace('#', '') || 'chat', false);
+
+  document.querySelectorAll('.fz-hist-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var wrap = btn.parentNode.querySelector('.fz-hist-msgs');
+      if (!wrap.hidden) { wrap.hidden = true; btn.textContent = 'View conversation'; return; }
+      if (wrap.getAttribute('data-loaded')) { wrap.hidden = false; btn.textContent = 'Hide conversation'; return; }
+      btn.textContent = 'Loading…';
+      fetch('{{ url_for("fun_zone_history_messages", session_id=0) }}'.replace(/0$/, btn.getAttribute('data-id')), { credentials: 'same-origin' })
+        .then(function (r) { return r.json().then(function (d) { return d; }); })
+        .then(function (d) {
+          wrap.innerHTML = '';
+          if (!d.success) { wrap.textContent = d.message || 'Could not load this conversation.'; }
+          else if (!d.messages.length) { wrap.textContent = 'No messages were posted in this chat.'; }
+          else {
+            d.messages.forEach(function (m) {
+              var row = document.createElement('div'); row.className = 'fz-hist-msg';
+              var who = document.createElement('strong'); who.textContent = (m.mine ? 'You' : '@' + m.username) + ' ';
+              var tm = document.createElement('span'); tm.className = 'fz-time'; tm.textContent = m.time;
+              var body = document.createElement('div'); body.textContent = m.body;
+              row.appendChild(who); row.appendChild(tm); row.appendChild(body); wrap.appendChild(row);
+            });
+          }
+          wrap.setAttribute('data-loaded', '1'); wrap.hidden = false; btn.textContent = 'Hide conversation';
+        })
+        .catch(function () { btn.textContent = 'View conversation'; });
+    });
+  });
+})();
+</script>
+{% if state != 'closed_day' %}
+<script>
+(function () {
+  var initialStatus = {{ ('none' if not fz else fz.status)|tojson }};
+  var stateName = {{ state|tojson }};
+  var chat = document.getElementById('fz-chat');
+  var box = document.getElementById('fz-messages');
+  var seen = {};
+  var lastId = chat ? parseInt(chat.getAttribute('data-last-id'), 10) || 0 : 0;
+
+  function initials(name) { return (name || '?').charAt(0).toUpperCase(); }
+
+  function render(m) {
+    if (seen[m.id]) return;
+    seen[m.id] = true;
+    var empty = document.getElementById('fz-empty');
+    if (empty) empty.remove();
+
+    var row = document.createElement('div');
+    row.className = 'fz-msg' + (m.mine ? ' mine' : '');
+
+    var av = document.createElement('div');
+    av.className = 'fz-avatar';
+    if (m.avatar) {
+      var img = document.createElement('img');
+      img.src = m.avatar; img.alt = '';
+      av.appendChild(img);
+    } else {
+      av.textContent = initials(m.username);
+    }
+
+    var bubble = document.createElement('div');
+    bubble.className = 'fz-bubble';
+    var meta = document.createElement('div');
+    meta.className = 'fz-meta';
+    var name = document.createElement('span');
+    name.className = 'fz-name';
+    name.textContent = m.mine ? 'You' : '@' + m.username;
+    meta.appendChild(name);
+    if (m.status) {
+      var tag = document.createElement('span');
+      tag.className = 'fz-tag';
+      tag.textContent = m.status === 'student' ? 'Student' : 'Employee';
+      meta.appendChild(tag);
+    }
+    var time = document.createElement('span');
+    time.className = 'fz-time';
+    time.textContent = m.time;
+    meta.appendChild(time);
+    var body = document.createElement('div');
+    body.className = 'fz-body';
+    body.textContent = m.body;
+    bubble.appendChild(meta);
+    bubble.appendChild(body);
+
+    row.appendChild(av);
+    row.appendChild(bubble);
+    box.appendChild(row);
+    if (m.id > lastId) lastId = m.id;
+  }
+
+  function renderAll(list) {
+    var nearBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
+    list.forEach(render);
+    if (nearBottom || list.some(function (m) { return m.mine; })) box.scrollTop = box.scrollHeight;
+  }
+
+  if (box) {
+    var initial = document.getElementById('fz-initial');
+    if (initial) { try { renderAll(JSON.parse(initial.textContent)); } catch (e) {} }
+    box.scrollTop = box.scrollHeight;
+  }
+
+  function poll() {
+    if (document.hidden) return;
+    fetch('{{ url_for("fun_zone_messages") }}?after=' + lastId, { credentials: 'same-origin' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (data) {
+        if (!data) return;
+        var live = data.status === 'open' && data.live;
+        if (data.status !== initialStatus || (stateName === 'open' && !live)) { window.location.reload(); return; }
+        if (box && data.messages && data.messages.length) renderAll(data.messages);
+      })
+      .catch(function () {});
+  }
+  setInterval(poll, stateName === 'open' || stateName === 'ended' ? 3000 : 8000);
+
+  var form = document.getElementById('fz-form');
+  if (form) {
+    var input = document.getElementById('fz-input');
+    var errBox = document.getElementById('fz-error');
+    var sending = false;
+    form.addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      var text = input.value.trim();
+      if (!text || sending) return;
+      sending = true;
+      errBox.hidden = true;
+      var fd = new FormData();
+      fd.append('body', text);
+      fetch('{{ url_for("fun_zone_send") }}', { method: 'POST', body: fd, credentials: 'same-origin' })
+        .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+        .then(function (res) {
+          if (res.ok && res.data.success) {
+            input.value = '';
+            renderAll([res.data.message]);
+          } else {
+            errBox.textContent = res.data.message || 'Could not send your message.';
+            errBox.hidden = false;
+          }
+        })
+        .catch(function () { errBox.textContent = 'Network problem — please try again.'; errBox.hidden = false; })
+        .then(function () { sending = false; input.focus(); });
+    });
+  }
+})();
+</script>
+{% endif %}
+{% endblock %}

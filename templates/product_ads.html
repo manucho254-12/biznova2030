@@ -1,0 +1,124 @@
+{% extends 'app_base.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Product Ads — BizNova{% endblock %}
+{% block content %}
+<h1 style="display:flex; align-items:center; gap:10px;">{{ icon('megaphone', 26) }} Product Ads</h1>
+<p style="color:var(--text-dim);">Check out products and offers from our partners.</p>
+
+{% if ads %}
+<div class="grid-3">
+  {% for ad in ads %}
+  <div class="ad-card">
+    {% set has_video = ad.video_filename or ad.video_url %}
+    {% if ad.video_filename %}
+      <video id="ad-video-{{ ad.id }}" controls preload="metadata"
+             src="{{ url_for('static', filename='uploads/ads/videos/' + ad.video_filename) }}"
+             style="width:100%; height:200px; object-fit:contain; display:block; background:var(--bg-soft);"
+             ontimeupdate="trackAdVideoWatch({{ ad.id }})"></video>
+    {% elif ad.video_url %}
+      <video id="ad-video-{{ ad.id }}" controls preload="metadata" src="{{ ad.video_url }}"
+             style="width:100%; height:200px; object-fit:contain; display:block; background:var(--bg-soft);"
+             ontimeupdate="trackAdVideoWatch({{ ad.id }})"></video>
+    {% elif ad.image_filename %}
+      <img src="{{ url_for('static', filename='uploads/ads/images/' + ad.image_filename) }}" alt="{{ ad.title }}" loading="lazy">
+    {% else %}
+      <div class="ad-placeholder">{{ icon('megaphone', 36) }}</div>
+    {% endif %}
+    <div class="ad-card-body">
+      <h3>{{ ad.title }}</h3>
+      {% if ad.reward_amount > 0 %}
+        <span class="reward-tag">Earn KES {{ '%.0f'|format(ad.reward_amount) }}</span>
+      {% endif %}
+      <p>{{ ad.description or 'Take a look!' }}</p>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        {% if ad.link_url %}
+        <a href="{{ ad.link_url }}" target="_blank" rel="noopener" class="btn btn-small">
+          {{ icon('external-link', 15) }} Visit Site
+        </a>
+        {% endif %}
+        {% if ad.reward_amount > 0 %}
+          {% if ad.id in claimed_ids %}
+            <span class="badge-done">{{ icon('check-circle', 15) }} Earned!</span>
+          {% elif has_video %}
+            <div style="width:100%;">
+              <div id="ad-watch-progress-{{ ad.id }}" class="field-hint" style="margin-bottom:8px;">
+                Watch the whole video to unlock your reward.
+              </div>
+              <button class="btn btn-small" id="ad-claim-btn-{{ ad.id }}" disabled
+                      onclick="claimProductAd({{ ad.id }}, this)">{{ icon('play', 15) }} Watch to Unlock</button>
+            </div>
+          {% else %}
+            <button class="btn btn-small" onclick="claimProductAd({{ ad.id }}, this)">{{ icon('banknote', 15) }} Claim KES {{ '%.0f'|format(ad.reward_amount) }}</button>
+          {% endif %}
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">No product ads right now. Check back soon!</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+const adVideoWatchedSeconds = {};
+const adVideoLastTime = {};
+const adVideoDone = {};
+
+function trackAdVideoWatch(id) {
+  const el = document.getElementById('ad-video-' + id);
+  if (!el || adVideoDone[id]) return;
+  const last = adVideoLastTime[id] || 0;
+  const current = el.currentTime;
+
+  // Only count forward, real-time progress (ignore seeks/skips ahead) — same
+  // anti-skip approach used for regular videos elsewhere on the site.
+  if (current > last && current - last < 1.5) {
+    adVideoWatchedSeconds[id] = (adVideoWatchedSeconds[id] || 0) + (current - last);
+  }
+  adVideoLastTime[id] = current;
+
+  const duration = el.duration || 0;
+  const progressEl = document.getElementById('ad-watch-progress-' + id);
+  const btn = document.getElementById('ad-claim-btn-' + id);
+  if (!btn) return;
+
+  // Require the whole video — treat "within half a second of the end" as done,
+  // since floating-point timeupdate events rarely land exactly on duration.
+  const watched = adVideoWatchedSeconds[id] || 0;
+  if (duration > 0 && watched >= duration - 0.5) {
+    adVideoDone[id] = true;
+    btn.disabled = false;
+    btn.innerHTML = `{{ icon('banknote', 15) }} Claim Your Reward`;
+    if (progressEl) progressEl.textContent = "You've watched the whole video — claim your reward below!";
+  } else if (progressEl && duration > 0) {
+    const remaining = Math.max(0, Math.ceil(duration - watched));
+    progressEl.textContent = `Keep watching — ${remaining}s more to unlock your reward.`;
+  }
+}
+
+function claimProductAd(adId, btn) {
+  btn.disabled = true;
+  fetch(`/product-ads/${adId}/claim`, { method: 'POST' })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        btn.outerHTML = `<span class="badge-done">{{ icon('check-circle', 15) }} Earned!</span>`;
+        const balEl = document.getElementById('wallet-balance');
+        if (balEl && data.new_balance !== undefined) {
+          balEl.textContent = 'KES ' + data.new_balance.toFixed(2);
+        }
+      } else {
+        alert(data.message);
+        btn.disabled = false;
+      }
+    })
+    .catch(() => {
+      alert('Something went wrong. Please try again.');
+      btn.disabled = false;
+    });
+}
+</script>
+{% endblock %}

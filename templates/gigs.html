@@ -1,0 +1,30 @@
+{% extends 'app_base.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Gigs — BizNova{% endblock %}
+{% block content %}
+<h1 style="display:flex; align-items:center; gap:10px;">{{ icon('briefcase', 26) }} Gigs</h1>
+<p style="color:var(--text-dim);">Free gigs and opportunities posted by BizNova. Tap <strong>View More</strong> to read the full notes and get in touch.</p>
+
+{% if gigs %}
+<div class="gig-grid">
+  {% for gig in gigs %}
+  <div class="gig-card">
+    <div class="gig-media">
+      {% if gig.image_filename %}
+        <img src="{{ url_for('static', filename='uploads/gigs/' + gig.image_filename) }}" alt="{{ gig.title }}" loading="lazy">
+      {% else %}
+        <div class="gig-placeholder">{{ icon('briefcase', 40) }}</div>
+      {% endif %}
+      <span class="gig-free">FREE</span>
+    </div>
+    <div class="gig-body">
+      <h3>{{ gig.title }}</h3>
+      <a href="{{ url_for('gig_detail', gig_id=gig.id) }}" class="btn btn-small">View More {{ icon('external-link', 14) }}</a>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">No gigs available right now. Check back soon!</div>
+{% endif %}
+{% endblock %}

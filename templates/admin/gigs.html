@@ -1,0 +1,64 @@
+{% extends 'admin/_shell.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Manage Gigs — Admin{% endblock %}
+{% block page_title %}Manage Gigs{% endblock %}
+{% block content %}
+<div class="form-card" style="max-width:520px;">
+  <h2>Add Gig</h2>
+  <form method="POST" action="{{ url_for('admin_gigs') }}" enctype="multipart/form-data">
+    <div class="form-group">
+      <label>Title</label>
+      <input type="text" name="title" required maxlength="200">
+    </div>
+    <div class="form-group">
+      <label>Picture</label>
+      <input type="file" name="image" accept="image/*">
+    </div>
+    <div class="form-group">
+      <label>Gig Link (optional)</label>
+      <input type="text" name="link_url" placeholder="https://...">
+    </div>
+    <div class="form-group">
+      <label>Notes &amp; Description</label>
+      <textarea name="description" rows="6" placeholder="Shown to users after they tap View More"></textarea>
+    </div>
+    <div class="form-group">
+      <label>WhatsApp Support Number</label>
+      <input type="tel" name="whatsapp_number" placeholder="254712345678" inputmode="tel">
+      <p style="color:var(--text-dim); font-size:0.8rem; margin:4px 0 0;">Numbers only. Include the country code (a local number like 0712345678 is treated as Kenya, +254). Users who tap the WhatsApp button go straight to a chat with this number.</p>
+    </div>
+    <button type="submit" class="btn">Add Gig</button>
+  </form>
+</div>
+
+<h2 class="section-title">All Gigs</h2>
+{% if gigs %}
+<div class="grid-3">
+  {% for gig in gigs %}
+  <div class="tile">
+    {% if gig.image_filename %}
+      <img src="{{ url_for('static', filename='uploads/gigs/' + gig.image_filename) }}" alt="">
+    {% else %}
+      <div class="ad-placeholder">{{ icon('briefcase', 36) }}</div>
+    {% endif %}
+    <div class="tile-body">
+      <h3 style="margin:0 0 6px;">{{ gig.title }}</h3>
+      <p>{{ (gig.description or '—')|truncate(120) }}</p>
+      {% if gig.link_url %}<p style="font-size:0.8rem;"><a href="{{ gig.link_url }}" target="_blank" rel="noopener">{{ gig.link_url|truncate(40) }}</a></p>{% endif %}
+      {% if gig.whatsapp_number %}<p style="font-size:0.8rem;">{{ icon('whatsapp', 14) }} +{{ gig.whatsapp_number }}</p>{% endif %}
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <form method="POST" action="{{ url_for('toggle_gig', gig_id=gig.id) }}">
+          <button type="submit" class="btn btn-small {{ '' if gig.active else 'btn-danger' }}">{{ 'Active — Deactivate' if gig.active else 'Inactive — Activate' }}</button>
+        </form>
+        <form method="POST" action="{{ url_for('delete_gig', gig_id=gig.id) }}" onsubmit="return confirm('Delete this gig?');">
+          <button type="submit" class="btn btn-small btn-danger">Delete</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">No gigs yet.</div>
+{% endif %}
+{% endblock %}

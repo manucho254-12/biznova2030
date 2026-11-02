@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}BizNova — Earn Money Online in Kenya via M-Pesa{% endblock %}</title>
+<meta name="description" content="{% block meta_description %}Earn money online in Kenya with BizNova. Like photos, watch videos, answer trivia, take surveys, write paid content, refer friends, and buy/sell products — cash out instantly to M-Pesa.{% endblock %}">
+<meta name="keywords" content="earn money online Kenya, M-Pesa earning app, online surveys Kenya, paid writing tasks, referral bonus app Kenya, watch videos earn money, like photos earn money, side hustle Kenya">
+<meta name="robots" content="index, follow">
+<meta name="theme-color" content="#f3f7f5">
+<link rel="canonical" href="{{ request.url_root.rstrip('/') }}{{ request.path }}">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="BizNova">
+<meta property="og:locale" content="en_KE">
+<meta property="og:title" content="{% block og_title %}BizNova — Earn Money Online in Kenya via M-Pesa{% endblock %}">
+<meta property="og:description" content="{% block og_description %}Like photos, watch videos, answer trivia, take surveys, write paid content, refer friends, and buy/sell products — cash out instantly to M-Pesa.{% endblock %}">
+<meta property="og:url" content="{{ request.url_root.rstrip('/') }}{{ request.path }}">
+<meta property="og:image" content="{{ url_for('static', filename='img/og-image.png', _external=True) }}">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="BizNova — Smart Earning for the Digital Generation">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="BizNova — Earn Money Online in Kenya via M-Pesa">
+<meta name="twitter:description" content="Like photos, watch videos, answer trivia, take surveys, write paid content, refer friends, and buy/sell products — cash out instantly to M-Pesa.">
+<meta name="twitter:image" content="{{ url_for('static', filename='img/og-image.png', _external=True) }}">
+
+<link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon.png') }}">
+<script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "BizNova",
+  "url": "{{ request.url_root.rstrip('/') }}",
+  "logo": "{{ url_for('static', filename='img/og-image.png', _external=True) }}",
+  "description": "BizNova is an online earning platform in Kenya where users earn money by watching videos, liking photos, answering trivia, taking surveys, completing writing tasks, and referring friends — with instant M-Pesa withdrawals.",
+  "areaServed": "KE",
+  "sameAs": []
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "BizNova",
+  "url": "{{ request.url_root.rstrip('/') }}"
+}
+</script>
+{% block structured_data %}{% endblock %}
+</head>
+<body>
+<nav class="navbar">
+  <div class="nav-inner">
+    <a href="{{ url_for('index') }}" class="brand">
+      <img src="{{ url_for('static', filename='img/logo.png') }}" alt="BizNova" style="height:34px; width:34px; vertical-align:-10px; margin-right:8px; border-radius:6px;">
+      Biz<span class="brand-accent">Nova</span>
+    </a>
+
+    {% if session.get('user_id') %}
+      <div class="nav-links">
+        <a href="{{ url_for('dashboard') }}">Dashboard</a>
+        <a href="{{ url_for('photos') }}">Photos</a>
+        <a href="{{ url_for('videos') }}">Videos</a>
+        <a href="{{ url_for('trivia') }}">Trivia</a>
+        <a href="{{ url_for('referrals') }}">Referrals</a>
+        <a href="{{ url_for('wallet') }}">Wallet</a>
+        <a href="{{ url_for('fun_zone') }}">Fun Zone</a>
+      </div>
+      <div class="nav-actions">
+        {% include '_theme_toggle.html' %}
+        <a href="{{ url_for('logout') }}" class="btn-outline">Logout</a>
+      </div>
+    {% else %}
+      <div class="nav-links nav-links-center">
+        <a href="{{ url_for('index') }}" class="{{ 'nav-active' if request.endpoint == 'index' }}">Home</a>
+        <a href="{{ url_for('index') }}#how-it-works">How It Works</a>
+        <a href="{{ url_for('index') }}#start-earning">Tasks</a>
+        <a href="{{ url_for('index') }}#fun-zone">Fun Zone</a>
+        <a href="{{ url_for('advertise') }}" class="{{ 'nav-active' if request.endpoint == 'advertise' }}">Advertise</a>
+        <a href="mailto:biznova254@gmail.com">Help</a>
+      </div>
+      <div class="nav-actions">
+        {% include '_theme_toggle.html' %}
+        <a href="{{ url_for('login') }}" class="btn-outline">Log In</a>
+        <a href="{{ url_for('register') }}" class="btn-solid">Sign Up</a>
+      </div>
+    {% endif %}
+  </div>
+</nav>
+
+<div class="flash-container">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="flash flash-{{ category }}">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+</div>
+
+<main class="main-content">
+  {% block content %}{% endblock %}
+</main>
+
+<footer class="footer">
+  <p>&copy; 2026 BizNova &mdash; All rights Reserved</p>
+  <p style="margin-top:6px; font-size:0.82rem;">
+    <a href="{{ url_for('terms') }}" style="color:var(--text-dim);">Terms of Service</a>
+    &nbsp;&middot;&nbsp;
+    <a href="{{ url_for('privacy') }}" style="color:var(--text-dim);">Privacy Policy</a>
+  </p>
+</footer>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

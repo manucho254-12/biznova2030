@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}BizNova{% endblock %}</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon.png') }}">
+<script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="app-body">
+{% from '_icons.html' import icon %}
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="sidebar-brand"><img src="{{ url_for('static', filename='img/logo.png') }}" alt="BizNova" style="height:26px; width:26px; vertical-align:-6px; margin-right:6px; border-radius:5px;">Biz<span>Nova</span></div>
+    <nav class="sidebar-nav">
+      <a href="{{ url_for('dashboard') }}" class="{{ 'active' if active_page == 'dashboard' }}">
+        {{ icon('grid', 19) }} Dashboard
+      </a>
+      <a href="{{ url_for('wallet') }}" class="{{ 'active' if active_page == 'wallet' }}">
+        {{ icon('wallet', 19) }} Wallet
+      </a>
+      <a href="{{ url_for('referrals') }}" class="{{ 'active' if active_page == 'referrals' }}">
+        {{ icon('users', 19) }} Referrals
+      </a>
+      {% if leaderboard_enabled %}
+      <a href="{{ url_for('leaderboard') }}" class="{{ 'active' if active_page == 'leaderboard' }}">
+        {{ icon('award', 19) }} Leaderboard
+      </a>
+      {% endif %}
+      <a href="{{ url_for('fun_zone') }}" class="{{ 'active' if active_page == 'fun_zone' }}">
+        {{ icon('trophy', 19) }} Fun Zone
+      </a>
+      <a href="{{ url_for('photos') }}" class="{{ 'active' if active_page == 'photos' }}">
+        {{ icon('camera', 19) }} Photos
+      </a>
+      <a href="{{ url_for('videos') }}" class="{{ 'active' if active_page == 'videos' }}">
+        {{ icon('video', 19) }} Videos
+      </a>
+      <a href="{{ url_for('trivia') }}" class="{{ 'active' if active_page == 'trivia' }}">
+        {{ icon('brain', 19) }} Trivia
+      </a>
+      <a href="{{ url_for('writing_tasks') }}" class="{{ 'active' if active_page == 'writing_tasks' }}">
+        {{ icon('edit', 19) }} Writing Tasks
+      </a>
+      <a href="{{ url_for('surveys') }}" class="{{ 'active' if active_page == 'surveys' }}">
+        {{ icon('clipboard', 19) }} Surveys
+      </a>
+      <a href="{{ url_for('product_ads') }}" class="{{ 'active' if active_page == 'product_ads' }}">
+        {{ icon('megaphone', 19) }} Product Ads
+      </a>
+      <a href="{{ url_for('gigs') }}" class="{{ 'active' if active_page == 'gigs' }}">
+        {{ icon('briefcase', 19) }} Gigs
+      </a>
+      <a href="{{ url_for('sell_products') }}" class="{{ 'active' if active_page == 'sell_products' }}">
+        {{ icon('tag', 19) }} Buy Products
+      </a>
+      <a href="{{ url_for('support') }}" class="{{ 'active' if active_page == 'support' }}">
+        {{ icon('headset', 19) }} Support
+      </a>
+      <a href="{{ url_for('profile') }}" class="{{ 'active' if active_page == 'profile' }}">
+        {{ icon('user', 19) }} Profile
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <a href="{{ url_for('logout') }}">{{ icon('logout', 17) }} Logout</a>
+    </div>
+  </aside>
+
+  <div class="app-main">
+    <header class="topbar">
+      <button class="sidebar-toggle" onclick="document.querySelector('.sidebar').classList.toggle('open')">{{ icon('menu', 22) }}</button>
+      <div class="topbar-spacer"></div>
+      {% include '_theme_toggle.html' %}
+      <div class="wallet-pill" id="wallet-balance">KES {{ '%.2f'|format(current_user_obj.wallet_balance) if current_user_obj else '0.00' }}</div>
+    </header>
+
+    <div class="flash-container">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="flash flash-{{ category }}">{{ message }}</div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+    </div>
+
+    <main class="app-content">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+
+{% if pending_notification %}
+<div class="modal-overlay" id="notif-overlay">
+  <div class="modal-box">
+    {% if pending_notification.video_filename %}
+      <video src="{{ url_for('static', filename='uploads/ads/videos/' + pending_notification.video_filename) }}"
+             autoplay muted loop playsinline controls
+             style="width:100%; max-height:280px; object-fit:contain; background:var(--bg-soft); border-radius:10px; margin-bottom:14px;"></video>
+    {% elif pending_notification.video_url %}
+      <video src="{{ pending_notification.video_url }}"
+             autoplay muted loop playsinline controls
+             style="width:100%; max-height:280px; object-fit:contain; background:var(--bg-soft); border-radius:10px; margin-bottom:14px;"></video>
+    {% elif pending_notification.image_filename %}
+      <img src="{{ url_for('static', filename='uploads/ads/images/' + pending_notification.image_filename) }}"
+           alt="" style="width:100%; max-height:280px; object-fit:contain; background:var(--bg-soft); border-radius:10px; margin-bottom:14px; display:block;">
+    {% else %}
+      <div class="icon-badge-lg green" style="margin: 0 auto 16px;">{{ icon('bell', 28) }}</div>
+    {% endif %}
+    <h3 style="text-align:center; margin:0 0 10px;">New on BizNova</h3>
+    <p style="text-align:center; color:var(--text-dim); margin:0 0 20px;">{{ pending_notification.message }}</p>
+    <div style="display:flex; gap:10px;">
+      {% if pending_notification.link_url %}
+        <a href="{{ pending_notification.link_url }}" class="btn">Take a look</a>
+      {% endif %}
+      <button class="btn btn-outline" style="width:100%;" onclick="document.getElementById('notif-overlay').remove()">Dismiss</button>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,28 @@
+{% extends 'app_base.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Photos — BizNova{% endblock %}
+{% block content %}
+<h1 style="display:flex; align-items:center; gap:10px;">{{ icon('camera', 26) }} Today's Photos</h1>
+<p style="color:var(--text-dim);">Like each photo once to earn. Photos expire 24 hours after being posted.</p>
+
+{% if photos %}
+<div class="grid-3">
+  {% for photo in photos %}
+  <div class="tile">
+    <img src="{{ url_for('static', filename='uploads/photos/' + photo.filename) }}" alt="{{ photo.caption or 'Daily photo on BizNova' }}" loading="lazy">
+    <div class="tile-body">
+      <span class="reward-tag">Earn KES {{ '%.0f'|format(photo.reward_amount) }}</span>
+      <p>{{ photo.caption or 'Like this photo to earn.' }}</p>
+      {% if photo.id in liked_ids %}
+        <span class="badge-done">{{ icon('check-circle', 15) }} Liked &mdash; Earned!</span>
+      {% else %}
+        <button class="btn btn-small" onclick="likePhoto({{ photo.id }}, this)">{{ icon('heart', 15) }} Like &amp; Earn</button>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">No photos available right now. Check back soon!</div>
+{% endif %}
+{% endblock %}

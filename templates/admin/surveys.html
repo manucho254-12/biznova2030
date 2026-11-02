@@ -1,0 +1,57 @@
+{% extends 'admin/_shell.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Manage Surveys — Admin{% endblock %}
+{% block page_title %}Manage Surveys{% endblock %}
+{% block content %}
+<div class="form-card" style="max-width:520px;">
+  <h2>Create Survey</h2>
+  <form method="POST" action="{{ url_for('admin_surveys') }}">
+    <div class="form-group">
+      <label>Title</label>
+      <input type="text" name="title" required>
+    </div>
+    <div class="form-group">
+      <label>Description (optional)</label>
+      <textarea name="description" rows="2"></textarea>
+    </div>
+    <div class="form-group">
+      <label>Reward Amount (KES)</label>
+      <input type="number" name="reward_amount" value="10" step="1" min="0" required>
+    </div>
+    <button type="submit" class="btn">Create Survey</button>
+  </form>
+  <p class="form-footer" style="text-align:left;">After creating a survey, add its questions below.</p>
+</div>
+
+<h2 class="section-title">All Surveys</h2>
+{% if surveys %}
+{% for s in surveys %}
+<div class="card" style="margin-bottom:18px;">
+  <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px;">
+    <div>
+      <h3 style="margin:0 0 4px;">{{ s.title }}</h3>
+      <p style="color:var(--text-dim); margin:0;">KES {{ '%.0f'|format(s.reward_amount) }} reward &middot; {{ s.questions|length }} question{{ 's' if s.questions|length != 1 }} &middot; {{ response_counts[s.id] }} response{{ 's' if response_counts[s.id] != 1 }}</p>
+    </div>
+    <form method="POST" action="{{ url_for('toggle_survey', survey_id=s.id) }}">
+      <button type="submit" class="btn btn-small {{ '' if s.active else 'btn-danger' }}">
+        {{ 'Active' if s.active else 'Inactive' }} — Toggle
+      </button>
+    </form>
+  </div>
+
+  {% if s.questions %}
+  <ul style="margin:14px 0 0; padding-left:18px; color:var(--text-dim); font-size:0.9rem;">
+    {% for q in s.questions %}<li>{{ q.question_text }}</li>{% endfor %}
+  </ul>
+  {% endif %}
+
+  <form method="POST" action="{{ url_for('admin_add_survey_question', survey_id=s.id) }}" style="display:flex; gap:8px; margin-top:14px;">
+    <input type="text" name="question_text" placeholder="Add a question..." required style="flex:1; padding:9px 12px; border-radius:8px; border:1px solid var(--border); background:var(--bg-soft); color:var(--text);">
+    <button type="submit" class="btn btn-small">Add</button>
+  </form>
+</div>
+{% endfor %}
+{% else %}
+<div class="empty-state">No surveys yet.</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,214 @@
+{% extends 'app_base.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Profile — BizNova{% endblock %}
+{% block content %}
+<h1 style="display:flex; align-items:center; gap:10px;">{{ icon('user', 26) }} Your Profile</h1>
+
+<div class="form-card">
+  <h2>Profile Details</h2>
+  <p class="form-card-subtitle">Username, email, and phone country code can't be changed here — contact support if you need those updated.</p>
+  <form method="POST" action="{{ url_for('profile_update') }}" enctype="multipart/form-data">
+    <div class="profile-photo-row">
+      <div class="fz-avatar fz-avatar-lg" id="avatar-preview">
+        {% if avatar_url(user) %}<img src="{{ avatar_url(user) }}" alt="Your profile picture">{% else %}{{ user.username[:1]|upper }}{% endif %}
+      </div>
+      <div style="flex:1; min-width:0;">
+        <label for="profile_photo" style="font-weight:600; display:block; margin-bottom:6px;">Profile picture</label>
+        <input type="file" id="profile_photo" name="profile_photo" accept="image/png,image/jpeg,image/gif,image/webp" style="width:100%;">
+        <p class="field-hint">Pick a photo, then drag and zoom to frame just your head. Shown next to your messages in the Fun Zone.</p>
+        {% if user.profile_photo %}
+        <label style="display:flex; align-items:center; gap:6px; font-size:0.85rem; color:var(--text-dim); margin-top:6px;">
+          <input type="checkbox" name="remove_photo" value="1" style="width:auto;"> Remove my current picture
+        </label>
+        {% endif %}
+      </div>
+    </div>
+    <div class="form-group">
+      <label>{{ icon('user', 14) }} Full Name</label>
+      <input type="text" name="full_name" value="{{ user.full_name }}" required>
+    </div>
+    <div class="form-group">
+      <label>Username</label>
+      <input type="text" value="@{{ user.username }}" disabled>
+    </div>
+    <div class="form-group">
+      <label>{{ icon('mail', 14) }} Email</label>
+      <input type="email" value="{{ user.email }}" disabled>
+    </div>
+    <div class="form-group">
+      <label>{{ icon('phone', 14) }} Phone Number</label>
+      <div style="display:flex; gap:8px;">
+        <input type="text" value="+254" disabled style="max-width:80px; text-align:center;">
+        <input type="text" name="phone_digits" value="{{ user.phone[3:] if user.phone.startswith('254') else user.phone }}" maxlength="9" placeholder="712345678">
+      </div>
+    </div>
+    <div class="form-group">
+      <label for="bio">About you</label>
+      <textarea id="bio" name="bio" rows="3" maxlength="300" placeholder="A short description about yourself (optional)">{{ user.bio or '' }}</textarea>
+    </div>
+    <div class="profile-grid">
+      <div class="form-group">
+        <label for="gender">Gender</label>
+        <select id="gender" name="gender">
+          <option value="">Select…</option>
+          {% for value, label in gender_choices %}
+          <option value="{{ value }}" {{ 'selected' if user.gender == value }}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="age_years">Age (years)</label>
+        <input type="number" id="age_years" name="age_years" min="13" max="100" value="{{ user.age_years or '' }}" placeholder="e.g. 24">
+      </div>
+      <div class="form-group">
+        <label for="occupation_status">Are you a…</label>
+        <select id="occupation_status" name="occupation_status">
+          <option value="">Select…</option>
+          {% for value, label in occupation_choices %}
+          <option value="{{ value }}" {{ 'selected' if user.occupation_status == value }}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    
+    <button type="submit" class="btn">Save Changes</button>
+  </form>
+</div>
+
+<div class="form-card">
+  <h2>Change Password</h2>
+  <form method="POST" action="{{ url_for('profile_change_password') }}">
+    <div class="form-group">
+      <label>{{ icon('lock', 14) }} Current Password</label>
+      <input type="password" name="current_password" required autocomplete="current-password">
+    </div>
+    <div class="form-group">
+      <label>{{ icon('lock', 14) }} New Password</label>
+      <input type="password" name="new_password" required minlength="6" autocomplete="new-password">
+    </div>
+    <div class="form-group">
+      <label>{{ icon('lock', 14) }} Confirm New Password</label>
+      <input type="password" name="confirm_password" required minlength="6" autocomplete="new-password">
+    </div>
+    <button type="submit" class="btn">Update Password</button>
+  </form>
+</div>
+<div class="crop-backdrop" id="crop-modal" hidden>
+  <div class="crop-dialog" role="dialog" aria-modal="true" aria-labelledby="crop-title">
+    <h3 id="crop-title" style="margin:0 0 4px;">Crop your picture</h3>
+    <p class="field-hint" style="margin:0 0 12px;">Drag to move and use the slider to zoom. Keep your head inside the circle.</p>
+    <div class="crop-stage" id="crop-stage">
+      <img id="crop-img" alt="" draggable="false">
+      <div class="crop-circle"></div>
+    </div>
+    <input type="range" id="crop-zoom" min="0" max="100" value="0" aria-label="Zoom" style="width:100%; margin:14px 0;">
+    <div style="display:flex; gap:10px; justify-content:flex-end;">
+      <button type="button" class="btn btn-outline" id="crop-cancel">Cancel</button>
+      <button type="button" class="btn" id="crop-save">Use this photo</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  var input = document.getElementById('profile_photo');
+  if (!input || !window.DataTransfer || !window.FileReader || !window.HTMLCanvasElement) return;
+
+  var modal = document.getElementById('crop-modal');
+  var stage = document.getElementById('crop-stage');
+  var img = document.getElementById('crop-img');
+  var zoom = document.getElementById('crop-zoom');
+  var S = 300, D = 260, M = 20;                  // stage size, circle diameter, margin
+  var circle = stage.querySelector('.crop-circle');
+  function sizeStage() {
+    S = Math.max(220, Math.min(300, window.innerWidth - 90)); D = S - 2 * M;
+    stage.style.width = S + 'px'; stage.style.height = S + 'px';
+    circle.style.width = D + 'px'; circle.style.height = D + 'px';
+  }
+  var nw = 0, nh = 0, minScale = 1, scale = 1, x = 0, y = 0;
+
+  function clamp() {
+    var w = nw * scale, h = nh * scale;
+    x = Math.min(M, Math.max(M + D - w, x));
+    y = Math.min(M, Math.max(M + D - h, y));
+  }
+  function render() {
+    clamp();
+    img.style.width = (nw * scale) + 'px';
+    img.style.height = (nh * scale) + 'px';
+    img.style.left = x + 'px';
+    img.style.top = y + 'px';
+  }
+  function setScale(ns) {                       // zoom around the centre of the circle
+    var c = S / 2, px = (c - x) / scale, py = (c - y) / scale;
+    scale = Math.max(minScale, Math.min(minScale * 4, ns));
+    x = c - px * scale; y = c - py * scale;
+    zoom.value = minScale === minScale * 4 ? 0 : Math.round((scale - minScale) / (minScale * 3) * 100);
+    render();
+  }
+  function close(clearInput) {
+    modal.hidden = true;
+    document.body.style.overflow = '';
+    if (clearInput) input.value = '';
+  }
+
+  input.addEventListener('change', function () {
+    var f = input.files && input.files[0];
+    if (!f) return;
+    if (!/^image\//.test(f.type)) { alert('Please choose an image file.'); input.value = ''; return; }
+    var reader = new FileReader();
+    reader.onload = function () {
+      img.onload = function () {
+        sizeStage();
+        nw = img.naturalWidth; nh = img.naturalHeight;
+        minScale = D / Math.min(nw, nh); scale = minScale;
+        x = (S - nw * scale) / 2; y = (S - nh * scale) / 2;
+        zoom.value = 0; render();
+        modal.hidden = false; document.body.style.overflow = 'hidden';
+      };
+      img.onerror = function () { alert('That image could not be opened. Try a different one.'); input.value = ''; };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(f);
+  });
+
+  zoom.addEventListener('input', function () { setScale(minScale + (minScale * 3) * (zoom.value / 100)); });
+  stage.addEventListener('wheel', function (e) {
+    e.preventDefault();
+    setScale(scale * (e.deltaY < 0 ? 1.08 : 0.92));
+  }, { passive: false });
+
+  var drag = null;
+  stage.addEventListener('pointerdown', function (e) {
+    drag = { px: e.clientX, py: e.clientY, x: x, y: y };
+    try { stage.setPointerCapture(e.pointerId); } catch (err) {}
+  });
+  stage.addEventListener('pointermove', function (e) {
+    if (!drag) return;
+    x = drag.x + (e.clientX - drag.px); y = drag.y + (e.clientY - drag.py); render();
+  });
+  ['pointerup', 'pointercancel'].forEach(function (n) { stage.addEventListener(n, function () { drag = null; }); });
+
+  document.getElementById('crop-cancel').addEventListener('click', function () { close(true); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !modal.hidden) close(true); });
+
+  document.getElementById('crop-save').addEventListener('click', function () {
+    var OUT = 400, canvas = document.createElement('canvas');
+    canvas.width = OUT; canvas.height = OUT;
+    var ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, OUT, OUT);
+    ctx.drawImage(img, (M - x) / scale, (M - y) / scale, D / scale, D / scale, 0, 0, OUT, OUT);
+    canvas.toBlob(function (blob) {
+      if (!blob) { alert('Could not crop this image. Please try another one.'); return; }
+      var file = new File([blob], 'avatar.jpg', { type: 'image/jpeg' });
+      var dt = new DataTransfer(); dt.items.add(file); input.files = dt.files;
+      var prev = document.getElementById('avatar-preview');
+      if (prev) { prev.innerHTML = ''; var im = document.createElement('img'); im.src = URL.createObjectURL(blob); im.alt = 'Your new profile picture'; prev.appendChild(im); }
+      close(false);
+    }, 'image/jpeg', 0.9);
+  });
+})();
+</script>
+{% endblock %}

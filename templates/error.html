@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}{{ code }} — BizNova{% endblock %}
+{% block content %}
+<div style="max-width:480px; margin:60px auto; text-align:center;">
+  <div class="icon-badge-lg" style="margin:0 auto 18px; background:var(--bg-soft);">{{ icon('help-circle', 28) }}</div>
+  <h1 style="margin-bottom:6px;">{{ code }}</h1>
+  <p style="color:var(--text-dim); margin-bottom:24px;">{{ message }}</p>
+  <a href="{{ url_for('index') }}" class="btn btn-solid">Back to home</a>
+</div>
+{% endblock %}

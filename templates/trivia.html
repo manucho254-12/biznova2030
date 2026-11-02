@@ -1,0 +1,35 @@
+{% extends 'app_base.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Trivia — BizNova{% endblock %}
+{% block content %}
+<h1 style="display:flex; align-items:center; gap:10px;">{{ icon('brain', 26) }} Today's Trivia</h1>
+<p style="color:var(--text-dim);">Answer each question once. Correct answers earn a bonus.</p>
+
+{% if questions %}
+  {% for q in questions %}
+  <div class="card" style="margin-bottom:18px;">
+    <span class="reward-tag">Earn KES {{ '%.0f'|format(q.reward_amount) }} if correct</span>
+    <h3 style="margin-top:6px;">{{ q.question_text }}</h3>
+
+    {% if q.id in answered %}
+      {% set a = answered[q.id] %}
+      {% if a.is_correct %}
+        <span class="badge-done">{{ icon('check-circle', 15) }} Correct &mdash; Earned!</span>
+      {% else %}
+        <span class="badge-done" style="background: rgba(248,113,113,0.15); color: var(--danger);">{{ icon('x-circle', 15) }} Incorrect. The right answer was option {{ q.correct_option|upper }}.</span>
+      {% endif %}
+    {% else %}
+      <form method="POST" action="{{ url_for('answer_trivia', question_id=q.id) }}" class="trivia-options">
+        <label><input type="radio" name="option" value="a" required> {{ q.option_a }}</label>
+        <label><input type="radio" name="option" value="b" required> {{ q.option_b }}</label>
+        <label><input type="radio" name="option" value="c" required> {{ q.option_c }}</label>
+        <label><input type="radio" name="option" value="d" required> {{ q.option_d }}</label>
+        <button type="submit" class="btn btn-small">Submit Answer</button>
+      </form>
+    {% endif %}
+  </div>
+  {% endfor %}
+{% else %}
+<div class="empty-state">No trivia questions available right now. Check back soon!</div>
+{% endif %}
+{% endblock %}

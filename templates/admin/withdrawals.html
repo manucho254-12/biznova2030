@@ -1,0 +1,32 @@
+{% extends 'admin/_shell.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Withdrawals — Admin{% endblock %}
+{% block page_title %}Pending Withdrawals{% endblock %}
+{% block content %}
+{% if withdrawals %}
+<div class="table-wrapper"><table>
+  <tr><th>User</th><th>Requested</th><th>Fee</th><th>Net to Send</th><th>M-Pesa Number</th><th>Requested</th><th>Action</th></tr>
+  {% for w in withdrawals %}
+  <tr>
+    <td>{{ w.user.full_name }} (@{{ w.user.username }})</td>
+    <td>KES {{ '%.0f'|format(w.amount) }}</td>
+    <td>KES {{ '%.0f'|format(w.fee) }}</td>
+    <td><strong>KES {{ '%.0f'|format(w.net_amount if w.net_amount is not none else w.amount) }}</strong></td>
+    <td>{{ w.mpesa_number }}</td>
+    <td>{{ w.requested_at.strftime('%d %b %Y, %H:%M') }}</td>
+    <td style="display:flex; gap:8px;">
+      <form method="POST" action="{{ url_for('approve_withdrawal', withdrawal_id=w.id) }}">
+        <button type="submit" class="btn btn-small">Approve &amp; Pay</button>
+      </form>
+      <form method="POST" action="{{ url_for('reject_withdrawal', withdrawal_id=w.id) }}">
+        <button type="submit" class="btn btn-small btn-danger">Reject &amp; Refund</button>
+      </form>
+    </td>
+  </tr>
+  {% endfor %}
+</table></div>
+<p style="color:var(--text-dim); font-size:0.85rem;">"Approve & Pay" only marks it as approved in the system — you still need to send the actual M-Pesa payment yourself.</p>
+{% else %}
+<div class="empty-state">No pending withdrawals.</div>
+{% endif %}
+{% endblock %}

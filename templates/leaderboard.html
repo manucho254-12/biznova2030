@@ -1,0 +1,33 @@
+{% extends 'app_base.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Leaderboard — BizNova{% endblock %}
+{% block content %}
+<h1 style="display:flex; align-items:center; gap:10px;">{{ icon('award', 26) }} Referral Leaderboard</h1>
+<p style="color:var(--text-dim);">Top referrers each period win a cash bonus, on top of the KES {{ referral_bonus if referral_bonus else 60 }} per direct referral and KES {{ level2_bonus if level2_bonus else 10 }} per indirect (level 2) referral you already earn.</p>
+
+<div class="admin-nav" style="margin-bottom:24px;">
+  <a href="{{ url_for('leaderboard', period='week') }}" class="{{ 'active' if period == 'week' }}">This Week</a>
+  <a href="{{ url_for('leaderboard', period='month') }}" class="{{ 'active' if period == 'month' }}">This Month</a>
+  <a href="{{ url_for('leaderboard', period='all') }}" class="{{ 'active' if period == 'all' }}">All-Time</a>
+</div>
+
+{% if my_rank %}
+<div class="earn-banner">
+  You're ranked <strong>#{{ my_rank.rank }}</strong> for {{ period_label }} with <strong>{{ my_rank.count }}</strong> activated referral{{ 's' if my_rank.count != 1 }}.
+</div>
+{% endif %}
+
+{% if rows %}
+<div class="leaderboard-list">
+  {% for r in rows %}
+  <div class="leaderboard-row {{ 'top3' if loop.index <= 3 }}">
+    <div class="leaderboard-rank rank-{{ loop.index }}">{{ loop.index }}</div>
+    <div class="leaderboard-name">{{ r.display_name }}</div>
+    <div class="leaderboard-count">{{ r.count }} referral{{ 's' if r.count != 1 }}</div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">No referrals recorded for {{ period_label }} yet — be the first!</div>
+{% endif %}
+{% endblock %}

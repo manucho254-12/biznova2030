@@ -1,0 +1,49 @@
+{% extends 'admin/_shell.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Withdrawal Fees — Admin{% endblock %}
+{% block page_title %}{{ icon('tag', 26) }} Withdrawal Transaction Fees{% endblock %}
+{% block content %}
+<p style="color:var(--text-dim);">Set the transaction cost charged on withdrawals by amount range — e.g. KES 200–350 costs KES 15. The fee is deducted from the amount the user requested; their wallet is still debited the full requested amount.</p>
+
+<div class="form-card" style="max-width:480px;">
+  <h2>Add Fee Tier</h2>
+  <form method="POST" action="{{ url_for('admin_withdrawal_fees') }}">
+    <div class="form-row">
+      <div class="form-group">
+        <label>Min Amount (KES)</label>
+        <input type="number" name="min_amount" step="1" min="0" required>
+      </div>
+      <div class="form-group">
+        <label>Max Amount (KES)</label>
+        <input type="number" name="max_amount" step="1" min="0" required>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Transaction Fee (KES)</label>
+      <input type="number" name="fee" step="1" min="0" required>
+    </div>
+    <button type="submit" class="btn">Add Fee Tier</button>
+  </form>
+</div>
+
+<h2 class="section-title">Current Fee Tiers</h2>
+{% if tiers %}
+<div class="table-wrapper"><table>
+  <tr><th>Amount Range</th><th>Fee</th><th></th></tr>
+  {% for t in tiers %}
+  <tr>
+    <td>KES {{ '%.0f'|format(t.min_amount) }} – {{ '%.0f'|format(t.max_amount) }}</td>
+    <td>KES {{ '%.0f'|format(t.fee) }}</td>
+    <td>
+      <form method="POST" action="{{ url_for('delete_withdrawal_fee', tier_id=t.id) }}"
+            onsubmit="return confirm('Remove this fee tier?');">
+        <button type="submit" class="btn btn-small btn-danger">Delete</button>
+      </form>
+    </td>
+  </tr>
+  {% endfor %}
+</table></div>
+{% else %}
+<div class="empty-state">No fee tiers set yet — withdrawals are currently free of transaction cost.</div>
+{% endif %}
+{% endblock %}

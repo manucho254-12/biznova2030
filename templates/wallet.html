@@ -1,0 +1,98 @@
+{% extends 'app_base.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Wallet — BizNova{% endblock %}
+{% block content %}
+<h1 style="display:flex; align-items:center; gap:10px;">{{ icon('wallet', 26) }} Your Wallet</h1>
+
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="value" id="wallet-balance">KES {{ '%.0f'|format(user.wallet_balance) }}</div>
+    <div class="label">Available Balance</div>
+  </div>
+</div>
+
+<div class="form-card">
+  <h2>Request Withdrawal</h2>
+  <form method="POST" action="{{ url_for('wallet') }}">
+    <div class="form-group">
+      <label>Amount (min KES {{ min_withdrawal }})</label>
+      <input type="number" name="amount" id="withdraw-amount" min="{{ min_withdrawal }}" step="1" required
+             oninput="updateFeePreview()">
+    </div>
+    <div class="form-group">
+      <label>M-Pesa Number</label>
+      <input type="text" value="0{{ user.phone[3:] if user.phone.startswith('254') else user.phone }}" disabled
+             style="background:var(--bg-soft); color:var(--text-dim); cursor:not-allowed;">
+      <p class="field-hint"> <a href="{{ url_for('profile') }}">Profile</a> page first.</p>
+    </div>
+    <div id="fee-preview-box" style="display:none; background:var(--bg-soft); border:1px solid var(--border); border-radius:10px; padding:14px 16px; margin-bottom:16px;">
+      <div style="display:flex; justify-content:space-between; font-size:0.88rem; color:var(--text-dim); margin-bottom:6px;">
+        <span>Transaction cost</span><span id="fee-preview-fee">—</span>
+      </div>
+      <div style="display:flex; justify-content:space-between; font-weight:700; font-size:1.05rem;">
+        <span>You will receive</span><span id="fee-preview-net" style="color:var(--primary);">—</span>
+      </div>
+      <p id="fee-preview-warning" style="display:none; color:var(--danger-text); font-size:0.8rem; margin:8px 0 0;"></p>
+    </div>
+    <button type="submit" class="btn">Request Withdrawal</button>
+  </form>
+
+  {% if fee_tiers %}
+  <p class="form-footer" style="text-align:left; margin-top:16px;">
+    <strong>Transaction cost by amount:</strong>
+    {% for t in fee_tiers %}KES {{ '%.0f'|format(t.min_amount) }}–{{ '%.0f'|format(t.max_amount) }} costs KES {{ '%.0f'|format(t.fee) }}{% if not loop.last %} &middot; {% endif %}{% endfor %}
+  </p>
+  {% endif %}
+</div>
+
+<h2 class="section-title">Withdrawal History</h2>
+{% if history %}
+<div class="table-wrapper"><table>
+  <tr><th>Requested</th><th>Fee</th><th>You Received</th><th>M-Pesa Number</th><th>Status</th><th>Date</th></tr>
+  {% for w in history %}
+  <tr>
+    <td>KES {{ '%.0f'|format(w.amount) }}</td>
+    <td>KES {{ '%.0f'|format(w.fee) }}</td>
+    <td>KES {{ '%.0f'|format(w.net_amount if w.net_amount is not none else w.amount) }}</td>
+    <td>{{ w.mpesa_number }}</td>
+    <td><span class="status-pill status-{{ w.status }}">{{ w.status|capitalize }}</span></td>
+    <td>{{ w.requested_at.strftime('%d %b %Y') }}</td>
+  </tr>
+  {% endfor %}
+</table></div>
+{% else %}
+<div class="empty-state">No withdrawal requests yet.</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+const feeTiers = [
+  {% for t in fee_tiers %}{min: {{ t.min_amount }}, max: {{ t.max_amount }}, fee: {{ t.fee }}},{% endfor %}
+];
+
+function updateFeePreview() {
+  const amount = parseFloat(document.getElementById('withdraw-amount').value);
+  const box = document.getElementById('fee-preview-box');
+  const warning = document.getElementById('fee-preview-warning');
+  if (!amount || amount <= 0) { box.style.display = 'none'; return; }
+
+  const tier = feeTiers.find(t => amount >= t.min && amount <= t.max);
+  box.style.display = 'block';
+
+  if (!tier) {
+    document.getElementById('fee-preview-fee').textContent = '—';
+    document.getElementById('fee-preview-net').textContent = '—';
+    warning.style.display = 'block';
+    warning.textContent = 'No transaction cost tier covers this amount yet — the exact cost will be confirmed when you submit.';
+    return;
+  }
+
+  const fee = tier.fee;
+  const net = amount - fee;
+  warning.style.display = 'none';
+  document.getElementById('fee-preview-fee').textContent = `KES ${fee.toFixed(0)}`;
+  document.getElementById('fee-preview-net').textContent = `KES ${net.toFixed(0)}`;
+}
+</script>
+{% endblock %}

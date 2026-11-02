@@ -1,0 +1,32 @@
+{% extends 'admin/_shell.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Support Messages — Admin{% endblock %}
+{% block page_title %}{{ icon('headset', 26) }} Support Messages{% endblock %}
+{% block content %}
+{% if messages %}
+{% for m in messages %}
+<div class="card" style="margin-bottom:16px;">
+  <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:10px;">
+    <div>
+      <h3 style="margin:0 0 4px;">{{ m.subject }}</h3>
+      <p style="color:var(--text-dim); margin:0;">From {{ m.user.full_name }} (@{{ m.user.username }}) &mdash; {{ m.user.email }}</p>
+    </div>
+    <span class="status-pill status-{{ 'confirmed' if m.status == 'replied' else ('rejected' if m.status == 'read' else 'pending') }}">{{ m.status|capitalize }}</span>
+  </div>
+  <p style="margin:12px 0; background:var(--bg-soft); border:1px solid var(--border); border-radius:8px; padding:14px; white-space:pre-line;">{{ m.message }}</p>
+  <p style="font-size:0.8rem; color:var(--text-dim); margin:0 0 14px;">Sent {{ m.submitted_at.strftime('%d %b %Y, %H:%M') }}</p>
+  <form method="POST" action="{{ url_for('update_support_message_status', message_id=m.id) }}" style="display:flex; gap:8px; flex-wrap:wrap;">
+    <select name="status" style="padding:8px 12px; border-radius:8px; border:1px solid var(--border); background:var(--bg-soft); color:var(--text);">
+      <option value="new" {{ 'selected' if m.status == 'new' }}>New</option>
+      <option value="read" {{ 'selected' if m.status == 'read' }}>Read</option>
+      <option value="replied" {{ 'selected' if m.status == 'replied' }}>Replied</option>
+    </select>
+    <button type="submit" class="btn btn-small">Update Status</button>
+    <a href="mailto:{{ m.user.email }}?subject=Re: {{ m.subject }}" class="btn btn-small btn-danger" style="background:var(--bg-soft); color:var(--text); border:1px solid var(--border); text-decoration:none;">{{ icon('mail', 14) }} Reply by Email</a>
+  </form>
+</div>
+{% endfor %}
+{% else %}
+<div class="empty-state">No support messages yet.</div>
+{% endif %}
+{% endblock %}

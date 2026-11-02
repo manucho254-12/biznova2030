@@ -1,0 +1,41 @@
+{% extends 'app_base.html' %}
+{% from '_icons.html' import icon %}
+{% block title %}Buy Products — BizNova{% endblock %}
+{% block content %}
+<h1 style="display:flex; align-items:center; gap:10px;">{{ icon('tag', 26) }} Buy Products</h1>
+<p style="color:var(--text-dim);">Items posted by sellers on the platform. Reach out to the owner directly if you're interested.</p>
+
+{% if listings %}
+<div class="grid-3">
+  {% for item in listings %}
+  <div class="tile">
+    {% if item.image_filename %}
+      <img src="{{ url_for('static', filename='uploads/sell_products/' + item.image_filename) }}" alt="{{ item.name or 'Product image' }}" loading="lazy">
+    {% else %}
+      <div class="ad-placeholder">{{ icon('tag', 36) }}</div>
+    {% endif %}
+    <div class="tile-body">
+      <h3 style="margin:0 0 6px;">{{ item.name or 'Untitled Listing' }}</h3>
+      {% if item.cost %}
+        <span class="reward-tag">KES {{ '%.0f'|format(item.cost) }}</span>
+      {% endif %}
+      {% if item.description %}
+        <p>{{ item.description }}</p>
+      {% endif %}
+      {% if item.location %}
+        <p style="font-size:0.82rem; display:flex; align-items:center; gap:5px; margin:4px 0;">{{ icon('map-pin', 14) }} {{ item.location }}</p>
+      {% endif %}
+      {% if item.owner_name or item.owner_contact %}
+        <p style="font-size:0.82rem; display:flex; align-items:center; gap:5px; margin:4px 0 0;">
+          {{ icon('phone', 14) }}
+          {{ item.owner_name or 'Seller' }}{% if item.owner_contact %} &mdash; {{ item.owner_contact }}{% endif %}
+        </p>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">No products listed for sale right now. Check back soon!</div>
+{% endif %}
+{% endblock %}
